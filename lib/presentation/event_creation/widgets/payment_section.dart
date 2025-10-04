@@ -253,7 +253,7 @@ class _PaymentSectionState extends State<PaymentSection> {
                         Switch(
                           value: widget.payPayEnabled,
                           onChanged: widget.onPayPayToggled,
-                          activeColor: AppTheme.lightTheme.colorScheme.primary,
+                          activeThumbColor: AppTheme.lightTheme.colorScheme.primary,
                         ),
                       ],
                     ),

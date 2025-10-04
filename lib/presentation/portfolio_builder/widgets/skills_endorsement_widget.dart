@@ -216,7 +216,7 @@ class _SkillsEndorsementWidgetState extends State<SkillsEndorsementWidget> {
             ),
             SizedBox(height: 2.h),
             DropdownButtonFormField<String>(
-              value: _selectedCategory,
+              initialValue: _selectedCategory,
               decoration: const InputDecoration(
                 labelText: 'Category',
               ),

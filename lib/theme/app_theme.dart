@@ -530,8 +530,9 @@ class AppTheme {
         return textSecondaryDark.withAlpha(128);
       }),
       trackColor: WidgetStateProperty.resolveWith((states) {
-        if (states.contains(WidgetState.selected))
+        if (states.contains(WidgetState.selected)) {
           return primaryDark.withAlpha(77);
+        }
         return outlineDark;
       }),
     ),

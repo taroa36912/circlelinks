@@ -458,7 +458,7 @@ class _CircleDiscoveryState extends State<CircleDiscovery>
                       SizedBox(height: 1.h),
 
                       // Filter Chips and Sort
-                      Container(
+                      SizedBox(
                         height: 6.h,
                         child: Row(
                           children: [

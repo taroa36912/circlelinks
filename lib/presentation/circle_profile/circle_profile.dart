@@ -20,7 +20,7 @@ class _CircleProfileState extends State<CircleProfile>
   late TabController _tabController;
   bool _isMember = false;
   bool _isFollowing = false;
-  bool _isLoading = false;
+  final bool _isLoading = false;
 
   // Mock data for the circle
   final Map<String, dynamic> _circleData = {

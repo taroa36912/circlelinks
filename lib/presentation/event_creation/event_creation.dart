@@ -617,17 +617,17 @@ class _EventCreationState extends State<EventCreation> {
                   Navigator.pop(context);
                   _createEvent();
                 },
+                style: ElevatedButton.styleFrom(
+                  padding: EdgeInsets.symmetric(vertical: 2.h),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
                 child: Text(
                   'このイベントを作成',
                   style: TextStyle(
                     fontSize: 16.sp,
                     fontWeight: FontWeight.w500,
-                  ),
-                ),
-                style: ElevatedButton.styleFrom(
-                  padding: EdgeInsets.symmetric(vertical: 2.h),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
                   ),
                 ),
               ),
@@ -710,7 +710,7 @@ class _EventCreationState extends State<EventCreation> {
 
             // Capacity
             if (_capacityLimit != null)
-              _buildPreviewRow('people', '定員', '${_capacityLimit}人'),
+              _buildPreviewRow('people', '定員', '$_capacityLimit人'),
           ],
         ),
       ),

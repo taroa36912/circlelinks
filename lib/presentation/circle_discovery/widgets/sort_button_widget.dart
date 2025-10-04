@@ -142,7 +142,7 @@ class SortButtonWidget extends StatelessWidget {
                     Navigator.pop(context);
                   },
                 );
-              }).toList(),
+              }),
               SizedBox(height: 2.h),
             ],
           ),

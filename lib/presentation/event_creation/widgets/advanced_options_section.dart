@@ -234,7 +234,7 @@ class _AdvancedOptionsSectionState extends State<AdvancedOptionsSection>
                         Switch(
                           value: widget.autoCreatePhotoAlbum,
                           onChanged: widget.onAutoCreatePhotoAlbumChanged,
-                          activeColor: AppTheme.lightTheme.colorScheme.primary,
+                          activeThumbColor: AppTheme.lightTheme.colorScheme.primary,
                         ),
                       ],
                     ),
@@ -307,7 +307,7 @@ class _AdvancedOptionsSectionState extends State<AdvancedOptionsSection>
                         Switch(
                           value: widget.enableCollaborationPosting,
                           onChanged: widget.onEnableCollaborationPostingChanged,
-                          activeColor:
+                          activeThumbColor:
                               AppTheme.lightTheme.colorScheme.secondary,
                         ),
                       ],

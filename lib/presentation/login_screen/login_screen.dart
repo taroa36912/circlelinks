@@ -1,35 +1,29 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:sizer/sizer.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/app_export.dart';
 import './widgets/biometric_prompt_widget.dart';
 import './widgets/login_form_widget.dart';
 import './widgets/social_login_widget.dart';
 
-class LoginScreen extends StatefulWidget {
+class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
 
   @override
-  State<LoginScreen> createState() => _LoginScreenState();
+  ConsumerState<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen>
+class _LoginScreenState extends ConsumerState<LoginScreen>
     with TickerProviderStateMixin {
   bool _isLoading = false;
-  bool _showBiometricPrompt = false;
+  final bool _showBiometricPrompt = false;
   late AnimationController _logoAnimationController;
   late AnimationController _formAnimationController;
   late Animation<double> _logoScaleAnimation;
   late Animation<Offset> _formSlideAnimation;
   late Animation<double> _formOpacityAnimation;
-
-  // Mock credentials for testing
-  final Map<String, String> _mockCredentials = {
-    'student@tokyo.ac.jp': 'student123',
-    'admin@university.ac.jp': 'admin123',
-    'circle@waseda.ac.jp': 'circle123',
-  };
 
   @override
   void initState() {
@@ -90,33 +84,24 @@ class _LoginScreenState extends State<LoginScreen>
     super.dispose();
   }
 
-  Future<void> _handleLogin() async {
+  Future<void> _handleLogin(String email, String password) async {
     setState(() {
       _isLoading = true;
     });
 
     try {
-      // Simulate authentication delay
-      await Future.delayed(const Duration(seconds: 2));
+      final authService = ref.read(firebaseAuthServiceProvider);
+      await authService.signInWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
 
-      // Mock authentication logic
-      final email = 'student@tokyo.ac.jp'; // This would come from form
-      final password = 'student123'; // This would come from form
+      // Provide haptic feedback for successful login
+      HapticFeedback.lightImpact();
 
-      if (_mockCredentials.containsKey(email) &&
-          _mockCredentials[email] == password) {
-        // Provide haptic feedback for successful login
-        HapticFeedback.lightImpact();
-
-        // Show biometric prompt for first-time login
-        if (mounted) {
-          setState(() {
-            _isLoading = false;
-            _showBiometricPrompt = true;
-          });
-        }
-      } else {
-        throw Exception('Invalid credentials');
+      // Navigate to home screen
+      if (mounted) {
+        Navigator.pushReplacementNamed(context, '/circle-discovery');
       }
     } catch (e) {
       setState(() {
@@ -126,7 +111,54 @@ class _LoginScreenState extends State<LoginScreen>
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: const Text('ログインに失敗しました。メールアドレスとパスワードを確認してください。'),
+            content: Text('ログインに失敗しました: $e'),
+            backgroundColor: AppTheme.lightTheme.colorScheme.error,
+            duration: const Duration(seconds: 3),
+            action: SnackBarAction(
+              label: '閉じる',
+              textColor: Colors.white,
+              onPressed: () {
+                ScaffoldMessenger.of(context).hideCurrentSnackBar();
+              },
+            ),
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _handleGoogleLogin() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final authService = ref.read(firebaseAuthServiceProvider);
+      final userCredential = await authService.signInWithGoogle();
+
+      if (userCredential != null) {
+        // Provide haptic feedback for successful login
+        HapticFeedback.lightImpact();
+
+        // Navigate to home screen
+        if (mounted) {
+          Navigator.pushReplacementNamed(context, '/circle-discovery');
+        }
+      } else {
+        // User cancelled Google sign-in
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Googleログインに失敗しました: $e'),
             backgroundColor: AppTheme.lightTheme.colorScheme.error,
             duration: const Duration(seconds: 3),
             action: SnackBarAction(
@@ -152,13 +184,7 @@ class _LoginScreenState extends State<LoginScreen>
   }
 
   void _navigateToSignUp() {
-    // Navigate to sign up screen (not implemented)
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('サインアップ機能は準備中です'),
-        duration: Duration(seconds: 2),
-      ),
-    );
+    Navigator.pushNamed(context, '/circle-registration');
   }
 
   @override
@@ -264,6 +290,7 @@ class _LoginScreenState extends State<LoginScreen>
                               opacity: _formOpacityAnimation,
                               child: LoginFormWidget(
                                 onLogin: _handleLogin,
+                                onGoogleLogin: _handleGoogleLogin,
                                 isLoading: _isLoading,
                               ),
                             ),

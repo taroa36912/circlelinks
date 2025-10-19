@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:sizer/sizer.dart';
 
 import '../../core/app_export.dart';
-import '../../widgets/custom_icon_widget.dart';
 import './widgets/circle_card_widget.dart';
 import './widgets/empty_state_widget.dart';
 import './widgets/filter_chip_widget.dart';
@@ -10,14 +9,14 @@ import './widgets/filter_modal_widget.dart';
 import './widgets/search_bar_widget.dart';
 import './widgets/sort_button_widget.dart';
 
-class CircleDiscovery extends StatefulWidget {
+class CircleDiscovery extends ConsumerStatefulWidget {
   const CircleDiscovery({super.key});
 
   @override
-  State<CircleDiscovery> createState() => _CircleDiscoveryState();
+  ConsumerState<CircleDiscovery> createState() => _CircleDiscoveryState();
 }
 
-class _CircleDiscoveryState extends State<CircleDiscovery>
+class _CircleDiscoveryState extends ConsumerState<CircleDiscovery>
     with TickerProviderStateMixin {
   late TabController _tabController;
   final TextEditingController _searchController = TextEditingController();
@@ -39,114 +38,35 @@ class _CircleDiscoveryState extends State<CircleDiscovery>
   final List<String> _tabs = [
     'All',
     'Sports',
-    'Cultural',
+    'Culture',
+    'Arts',
     'Academic',
-    'Volunteer'
+    'Other'
   ];
 
-  // Mock data for circles
-  final List<Map<String, dynamic>> _allCircles = [
-    {
-      "id": 1,
-      "name": "Tokyo Football Club",
-      "description":
-          "Competitive football circle with weekly training sessions and inter-university tournaments.",
-      "university": "Tokyo University",
-      "activityType": "Sports",
-      "memberCount": 45,
-      "activityLevel": "High",
-      "isVerified": true,
-      "coverImage":
-          "https://images.pexels.com/photos/274422/pexels-photo-274422.jpeg?auto=compress&cs=tinysrgb&w=800",
-      "skills": ["Leadership", "Planning", "Communication"],
-      "lastActive": DateTime.now().subtract(const Duration(hours: 2)),
-    },
-    {
-      "id": 2,
-      "name": "Waseda Photography Circle",
-      "description":
-          "Creative photography circle exploring Tokyo's hidden gems and organizing photo exhibitions.",
-      "university": "Waseda University",
-      "activityType": "Cultural",
-      "memberCount": 28,
-      "activityLevel": "Medium",
-      "isVerified": true,
-      "coverImage":
-          "https://images.pexels.com/photos/1983032/pexels-photo-1983032.jpeg?auto=compress&cs=tinysrgb&w=800",
-      "skills": ["Creative", "Organization", "Design"],
-      "lastActive": DateTime.now().subtract(const Duration(hours: 5)),
-    },
-    {
-      "id": 3,
-      "name": "Keio Debate Society",
-      "description":
-          "Academic debate circle focusing on current affairs and critical thinking development.",
-      "university": "Keio University",
-      "activityType": "Academic",
-      "memberCount": 32,
-      "activityLevel": "High",
-      "isVerified": false,
-      "coverImage":
-          "https://images.pexels.com/photos/1181406/pexels-photo-1181406.jpeg?auto=compress&cs=tinysrgb&w=800",
-      "skills": ["Communication", "Leadership", "Planning"],
-      "lastActive": DateTime.now().subtract(const Duration(hours: 1)),
-    },
-    {
-      "id": 4,
-      "name": "Sophia Volunteer Network",
-      "description":
-          "Community service circle dedicated to helping local communities and environmental causes.",
-      "university": "Sophia University",
-      "activityType": "Volunteer",
-      "memberCount": 52,
-      "activityLevel": "Medium",
-      "isVerified": true,
-      "coverImage":
-          "https://images.pexels.com/photos/6646918/pexels-photo-6646918.jpeg?auto=compress&cs=tinysrgb&w=800",
-      "skills": ["Organization", "Mood Maker", "Communication"],
-      "lastActive": DateTime.now().subtract(const Duration(hours: 3)),
-    },
-    {
-      "id": 5,
-      "name": "Meiji Music Ensemble",
-      "description":
-          "Classical and contemporary music circle performing at university events and concerts.",
-      "university": "Meiji University",
-      "activityType": "Cultural",
-      "memberCount": 38,
-      "activityLevel": "High",
-      "isVerified": true,
-      "coverImage":
-          "https://images.pexels.com/photos/1105666/pexels-photo-1105666.jpeg?auto=compress&cs=tinysrgb&w=800",
-      "skills": ["Creative", "Planning", "Mood Maker"],
-      "lastActive": DateTime.now().subtract(const Duration(minutes: 30)),
-    },
-    {
-      "id": 6,
-      "name": "Rikkyo Basketball Team",
-      "description":
-          "Competitive basketball circle with daily practice and league participation.",
-      "university": "Rikkyo University",
-      "activityType": "Sports",
-      "memberCount": 24,
-      "activityLevel": "High",
-      "isVerified": false,
-      "coverImage":
-          "https://images.pexels.com/photos/1752757/pexels-photo-1752757.jpeg?auto=compress&cs=tinysrgb&w=800",
-      "skills": ["Leadership", "Communication", "Planning"],
-      "lastActive": DateTime.now().subtract(const Duration(hours: 4)),
-    },
-  ];
-
-  List<Map<String, dynamic>> _filteredCircles = [];
+  List<CircleModel> _allCircles = [];
+  List<CircleModel> _filteredCircles = [];
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: _tabs.length, vsync: this);
-    _filteredCircles = List.from(_allCircles);
     _scrollController.addListener(_onScroll);
     _tabController.addListener(_onTabChanged);
+    _loadCircles();
+  }
+
+  void _loadCircles() {
+    final firestoreService = ref.read(firestoreServiceProvider);
+    firestoreService.getCirclesStream().listen((circles) {
+      if (mounted) {
+        setState(() {
+          _allCircles = circles;
+          _filteredCircles = List.from(_allCircles);
+          _applyFiltersAndSearch();
+        });
+      }
+    });
   }
 
   @override
@@ -176,8 +96,7 @@ class _CircleDiscoveryState extends State<CircleDiscovery>
         _filteredCircles = List.from(_allCircles);
       } else {
         _filteredCircles = _allCircles.where((circle) {
-          return (circle['activityType'] as String).toLowerCase() ==
-              tab.toLowerCase();
+          return circle.category.toLowerCase() == tab.toLowerCase();
         }).toList();
       }
       _applyFiltersAndSearch();
@@ -206,14 +125,14 @@ class _CircleDiscoveryState extends State<CircleDiscovery>
   }
 
   void _applyFiltersAndSearch() {
-    List<Map<String, dynamic>> filtered = List.from(_filteredCircles);
+    List<CircleModel> filtered = List.from(_filteredCircles);
 
     // Apply search
     if (_searchQuery.isNotEmpty) {
       filtered = filtered.where((circle) {
-        final name = (circle['name'] as String).toLowerCase();
-        final description = (circle['description'] as String).toLowerCase();
-        final university = (circle['university'] as String).toLowerCase();
+        final name = circle.circleName.toLowerCase();
+        final description = circle.description.toLowerCase();
+        final university = circle.universityName.toLowerCase();
         final query = _searchQuery.toLowerCase();
 
         return name.contains(query) ||
@@ -226,22 +145,21 @@ class _CircleDiscoveryState extends State<CircleDiscovery>
     if ((_activeFilters['universities'] as List).isNotEmpty) {
       filtered = filtered.where((circle) {
         return (_activeFilters['universities'] as List)
-            .contains(circle['university']);
+            .contains(circle.universityName);
       }).toList();
     }
 
     if ((_activeFilters['activityTypes'] as List).isNotEmpty) {
       filtered = filtered.where((circle) {
         return (_activeFilters['activityTypes'] as List)
-            .contains(circle['activityType']);
+            .contains(circle.category);
       }).toList();
     }
 
     if ((_activeFilters['skills'] as List).isNotEmpty) {
       filtered = filtered.where((circle) {
-        final circleSkills = circle['skills'] as List<String>;
         return (_activeFilters['skills'] as List)
-            .any((skill) => circleSkills.contains(skill));
+            .any((skill) => circle.socialMediaLinks.contains(skill));
       }).toList();
     }
 
@@ -249,8 +167,8 @@ class _CircleDiscoveryState extends State<CircleDiscovery>
     final minMembers = _activeFilters['minMembers'] as int;
     final maxMembers = _activeFilters['maxMembers'] as int;
     filtered = filtered.where((circle) {
-      final memberCount = circle['memberCount'] as int;
-      return memberCount >= minMembers && memberCount <= maxMembers;
+      return circle.memberCount >= minMembers &&
+          circle.memberCount <= maxMembers;
     }).toList();
 
     setState(() {
@@ -262,24 +180,18 @@ class _CircleDiscoveryState extends State<CircleDiscovery>
   void _sortCircles() {
     switch (_currentSort) {
       case 'Distance':
-        // Mock distance sorting
-        _filteredCircles
-            .sort((a, b) => (a['id'] as int).compareTo(b['id'] as int));
+        // Mock distance sorting - sort by creation date
+        _filteredCircles.sort((a, b) => b.createdAt.compareTo(a.createdAt));
         break;
       case 'Member Count':
-        _filteredCircles.sort((a, b) =>
-            (b['memberCount'] as int).compareTo(a['memberCount'] as int));
+        _filteredCircles.sort((a, b) => b.memberCount.compareTo(a.memberCount));
         break;
       case 'Activity Level':
-        _filteredCircles.sort((a, b) {
-          final levelOrder = {'High': 3, 'Medium': 2, 'Low': 1};
-          return (levelOrder[b['activityLevel']] ?? 0)
-              .compareTo(levelOrder[a['activityLevel']] ?? 0);
-        });
+        // Sort by verification status
+        _filteredCircles.sort((a, b) => b.isVerified ? 1 : -1);
         break;
       case 'Recently Active':
-        _filteredCircles.sort((a, b) => (b['lastActive'] as DateTime)
-            .compareTo(a['lastActive'] as DateTime));
+        _filteredCircles.sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
         break;
       default: // Relevance
         // Keep original order for relevance
@@ -307,13 +219,11 @@ class _CircleDiscoveryState extends State<CircleDiscovery>
       _isLoading = true;
     });
 
-    // Simulate refresh
-    await Future.delayed(const Duration(seconds: 1));
+    // Refresh data from Firebase
+    _loadCircles();
 
     setState(() {
       _isLoading = false;
-      _filteredCircles = List.from(_allCircles);
-      _applyFiltersAndSearch();
     });
   }
 
@@ -419,10 +329,9 @@ class _CircleDiscoveryState extends State<CircleDiscovery>
               foregroundColor: colorScheme.onSurface,
               actions: [
                 IconButton(
-                  onPressed: () =>
-                      Navigator.pushNamed(context, '/portfolio-builder'),
+                  onPressed: () => Navigator.pushNamed(context, '/connections'),
                   icon: CustomIconWidget(
-                    iconName: 'person',
+                    iconName: 'people',
                     color: colorScheme.onSurface,
                     size: 24,
                   ),
@@ -524,7 +433,11 @@ class _CircleDiscoveryState extends State<CircleDiscovery>
                     return CircleCardWidget(
                       circleData: circle,
                       onTap: () {
-                        Navigator.pushNamed(context, '/circle-profile');
+                        Navigator.pushNamed(
+                          context,
+                          '/circle-profile',
+                          arguments: {'circleId': circle.id},
+                        );
                       },
                       onLongPress: () {
                         _showQuickActions(context, circle);
@@ -545,7 +458,7 @@ class _CircleDiscoveryState extends State<CircleDiscovery>
     );
   }
 
-  void _showQuickActions(BuildContext context, Map<String, dynamic> circle) {
+  void _showQuickActions(BuildContext context, CircleModel circle) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
@@ -580,7 +493,7 @@ class _CircleDiscoveryState extends State<CircleDiscovery>
                 Navigator.pop(context);
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
-                      content: Text('${circle['name']} saved to favorites')),
+                      content: Text('${circle.circleName} saved to favorites')),
                 );
               },
             ),

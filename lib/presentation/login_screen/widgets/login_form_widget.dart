@@ -3,21 +3,23 @@ import 'package:sizer/sizer.dart';
 
 import '../../../core/app_export.dart';
 
-class LoginFormWidget extends StatefulWidget {
-  final VoidCallback onLogin;
+class LoginFormWidget extends ConsumerStatefulWidget {
+  final Function(String email, String password) onLogin;
+  final VoidCallback onGoogleLogin;
   final bool isLoading;
 
   const LoginFormWidget({
     super.key,
     required this.onLogin,
+    required this.onGoogleLogin,
     required this.isLoading,
   });
 
   @override
-  State<LoginFormWidget> createState() => _LoginFormWidgetState();
+  ConsumerState<LoginFormWidget> createState() => _LoginFormWidgetState();
 }
 
-class _LoginFormWidgetState extends State<LoginFormWidget> {
+class _LoginFormWidgetState extends ConsumerState<LoginFormWidget> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
@@ -213,7 +215,7 @@ class _LoginFormWidgetState extends State<LoginFormWidget> {
             style: AppTheme.lightTheme.textTheme.bodyLarge,
             onFieldSubmitted: (_) {
               if (_isFormValid && !widget.isLoading) {
-                widget.onLogin();
+                widget.onLogin(_emailController.text, _passwordController.text);
               }
             },
           ),
@@ -224,14 +226,43 @@ class _LoginFormWidgetState extends State<LoginFormWidget> {
           Align(
             alignment: Alignment.centerRight,
             child: TextButton(
-              onPressed: () {
-                // Handle forgot password
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('パスワードリセット機能は準備中です'),
-                    duration: Duration(seconds: 2),
-                  ),
-                );
+              onPressed: () async {
+                if (_emailController.text.isNotEmpty &&
+                    _isValidEmail(_emailController.text)) {
+                  try {
+                    final authService = ref.read(firebaseAuthServiceProvider);
+                    await authService
+                        .sendPasswordResetEmail(_emailController.text);
+
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('パスワードリセットメールを送信しました'),
+                          backgroundColor: Colors.green,
+                          duration: Duration(seconds: 3),
+                        ),
+                      );
+                    }
+                  } catch (e) {
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('パスワードリセットに失敗しました: $e'),
+                          backgroundColor: Colors.red,
+                          duration: const Duration(seconds: 3),
+                        ),
+                      );
+                    }
+                  }
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('有効なメールアドレスを入力してください'),
+                      backgroundColor: Colors.orange,
+                      duration: Duration(seconds: 2),
+                    ),
+                  );
+                }
               },
               child: Text(
                 'パスワードを忘れましたか？',
@@ -245,13 +276,76 @@ class _LoginFormWidgetState extends State<LoginFormWidget> {
 
           SizedBox(height: 3.h),
 
+          // Google Login Button
+          SizedBox(
+            width: double.infinity,
+            height: 6.h,
+            child: OutlinedButton.icon(
+              onPressed: widget.isLoading ? null : widget.onGoogleLogin,
+              icon: CustomIconWidget(
+                iconName: 'google',
+                color: AppTheme.lightTheme.colorScheme.onSurface,
+                size: 20,
+              ),
+              label: Text(
+                'Googleでログイン',
+                style: AppTheme.lightTheme.textTheme.titleMedium?.copyWith(
+                  color: AppTheme.lightTheme.colorScheme.onSurface,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              style: OutlinedButton.styleFrom(
+                side: BorderSide(
+                  color: AppTheme.lightTheme.colorScheme.outline,
+                  width: 1,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
+          ),
+
+          SizedBox(height: 2.h),
+
+          // Divider
+          Row(
+            children: [
+              Expanded(
+                child: Divider(
+                  color: AppTheme.lightTheme.colorScheme.outline,
+                  thickness: 1,
+                ),
+              ),
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: 2.w),
+                child: Text(
+                  'または',
+                  style: AppTheme.lightTheme.textTheme.bodySmall?.copyWith(
+                    color: AppTheme.lightTheme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ),
+              Expanded(
+                child: Divider(
+                  color: AppTheme.lightTheme.colorScheme.outline,
+                  thickness: 1,
+                ),
+              ),
+            ],
+          ),
+
+          SizedBox(height: 2.h),
+
           // Login Button
           SizedBox(
             width: double.infinity,
             height: 6.h,
             child: ElevatedButton(
-              onPressed:
-                  _isFormValid && !widget.isLoading ? widget.onLogin : null,
+              onPressed: _isFormValid && !widget.isLoading
+                  ? () => widget.onLogin(
+                      _emailController.text, _passwordController.text)
+                  : null,
               style: ElevatedButton.styleFrom(
                 backgroundColor: _isFormValid
                     ? AppTheme.lightTheme.colorScheme.primary

@@ -1,0 +1,115 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
+class CircleModel {
+  final String id;
+  final String userId;
+  final String email;
+  final String universityName;
+  final String circleName;
+  final String category;
+  final String description;
+  final int memberCount;
+  final String? profileImageUrl;
+  final String? coverImageUrl;
+  final String? verificationDocumentUrl;
+  final List<String> socialMediaLinks;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  final bool isVerified;
+
+  CircleModel({
+    required this.id,
+    required this.userId,
+    required this.email,
+    required this.universityName,
+    required this.circleName,
+    required this.category,
+    required this.description,
+    required this.memberCount,
+    this.profileImageUrl,
+    this.coverImageUrl,
+    this.verificationDocumentUrl,
+    this.socialMediaLinks = const [],
+    required this.createdAt,
+    required this.updatedAt,
+    this.isVerified = false,
+  });
+
+  factory CircleModel.fromFirestore(DocumentSnapshot doc) {
+    final data = doc.data() as Map<String, dynamic>;
+    return CircleModel(
+      id: doc.id,
+      userId: data['userId'] ?? '',
+      email: data['email'] ?? '',
+      universityName: data['universityName'] ?? '',
+      circleName: data['circleName'] ?? '',
+      category: data['category'] ?? '',
+      description: data['description'] ?? '',
+      memberCount: data['memberCount'] ?? 0,
+      profileImageUrl: data['profileImageUrl'],
+      coverImageUrl: data['coverImageUrl'],
+      verificationDocumentUrl: data['verificationDocumentUrl'],
+      socialMediaLinks: List<String>.from(data['socialMediaLinks'] ?? []),
+      createdAt: (data['createdAt'] as Timestamp).toDate(),
+      updatedAt: (data['updatedAt'] as Timestamp).toDate(),
+      isVerified: data['isVerified'] ?? false,
+    );
+  }
+
+  Map<String, dynamic> toFirestore() {
+    return {
+      'userId': userId,
+      'email': email,
+      'universityName': universityName,
+      'circleName': circleName,
+      'category': category,
+      'description': description,
+      'memberCount': memberCount,
+      'profileImageUrl': profileImageUrl,
+      'coverImageUrl': coverImageUrl,
+      'verificationDocumentUrl': verificationDocumentUrl,
+      'socialMediaLinks': socialMediaLinks,
+      'createdAt': Timestamp.fromDate(createdAt),
+      'updatedAt': Timestamp.fromDate(updatedAt),
+      'isVerified': isVerified,
+    };
+  }
+
+  CircleModel copyWith({
+    String? id,
+    String? userId,
+    String? email,
+    String? universityName,
+    String? circleName,
+    String? category,
+    String? description,
+    int? memberCount,
+    String? profileImageUrl,
+    String? coverImageUrl,
+    String? verificationDocumentUrl,
+    List<String>? socialMediaLinks,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+    bool? isVerified,
+  }) {
+    return CircleModel(
+      id: id ?? this.id,
+      userId: userId ?? this.userId,
+      email: email ?? this.email,
+      universityName: universityName ?? this.universityName,
+      circleName: circleName ?? this.circleName,
+      category: category ?? this.category,
+      description: description ?? this.description,
+      memberCount: memberCount ?? this.memberCount,
+      profileImageUrl: profileImageUrl ?? this.profileImageUrl,
+      coverImageUrl: coverImageUrl ?? this.coverImageUrl,
+      verificationDocumentUrl:
+          verificationDocumentUrl ?? this.verificationDocumentUrl,
+      socialMediaLinks: socialMediaLinks ?? this.socialMediaLinks,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      isVerified: isVerified ?? this.isVerified,
+    );
+  }
+}
+

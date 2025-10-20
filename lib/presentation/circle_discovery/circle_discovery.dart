@@ -338,7 +338,7 @@ class _CircleDiscoveryState extends ConsumerState<CircleDiscovery>
                 ),
               ],
               bottom: PreferredSize(
-                preferredSize: Size.fromHeight(25.h),
+                preferredSize: Size.fromHeight(29.h),
                 child: Container(
                   color: colorScheme.surface,
                   child: Column(

@@ -27,58 +27,60 @@ class EmptyStateWidget extends StatelessWidget {
     return Center(
       child: Padding(
         padding: EdgeInsets.all(8.w),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            // Illustration
-            Container(
-              width: 40.w,
-              height: 40.w,
-              decoration: BoxDecoration(
-                color: colorScheme.surfaceContainerHighest,
-                borderRadius: BorderRadius.circular(20.w),
-              ),
-              child: CustomIconWidget(
-                iconName: 'search_off',
-                color: colorScheme.onSurfaceVariant,
-                size: 20.w,
-              ),
-            ),
-
-            SizedBox(height: 4.h),
-
-            // Title
-            Text(
-              title,
-              style: theme.textTheme.headlineSmall?.copyWith(
-                fontWeight: FontWeight.w600,
-                color: colorScheme.onSurface,
-              ),
-              textAlign: TextAlign.center,
-            ),
-
-            SizedBox(height: 2.h),
-
-            // Description
-            Text(
-              description,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: colorScheme.onSurfaceVariant,
-              ),
-              textAlign: TextAlign.center,
-            ),
-
-            if (actionText != null && onActionPressed != null) ...[
-              SizedBox(height: 4.h),
-              ElevatedButton(
-                onPressed: onActionPressed,
-                style: ElevatedButton.styleFrom(
-                  padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 2.h),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              // Illustration
+              Container(
+                width: 40.w,
+                height: 40.w,
+                decoration: BoxDecoration(
+                  color: colorScheme.surfaceContainerHighest,
+                  borderRadius: BorderRadius.circular(20.w),
                 ),
-                child: Text(actionText!),
+                child: CustomIconWidget(
+                  iconName: 'search_off',
+                  color: colorScheme.onSurfaceVariant,
+                  size: 20.w,
+                ),
               ),
+
+              SizedBox(height: 4.h),
+
+              // Title
+              Text(
+                title,
+                style: theme.textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: colorScheme.onSurface,
+                ),
+                textAlign: TextAlign.center,
+              ),
+
+              SizedBox(height: 2.h),
+
+              // Description
+              Text(
+                description,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                ),
+                textAlign: TextAlign.center,
+              ),
+
+              if (actionText != null && onActionPressed != null) ...[
+                SizedBox(height: 4.h),
+                ElevatedButton(
+                  onPressed: onActionPressed,
+                  style: ElevatedButton.styleFrom(
+                    padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 2.h),
+                  ),
+                  child: Text(actionText!),
+                ),
+              ],
             ],
-          ],
+          ),
         ),
       ),
     );

@@ -289,7 +289,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                               opacity: _formOpacityAnimation,
                               child: LoginFormWidget(
                                 onLogin: _handleLogin,
-                                onGoogleLogin: _handleGoogleLogin,
+                                // onGoogleLogin: _handleGoogleLogin,
                                 isLoading: _isLoading,
                               ),
                             ),
@@ -307,7 +307,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                             position: _formSlideAnimation,
                             child: FadeTransition(
                               opacity: _formOpacityAnimation,
-                              child: const SocialLoginWidget(),
+                              child: SocialLoginWidget(onGoogleLogin: _handleGoogleLogin),
                             ),
                           );
                         },

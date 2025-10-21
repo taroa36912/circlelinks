@@ -5,13 +5,13 @@ import '../../../core/app_export.dart';
 
 class LoginFormWidget extends ConsumerStatefulWidget {
   final Function(String email, String password) onLogin;
-  final VoidCallback onGoogleLogin;
+  // final VoidCallback onGoogleLogin; // 削除
   final bool isLoading;
 
   const LoginFormWidget({
     super.key,
     required this.onLogin,
-    required this.onGoogleLogin,
+    // required this.onGoogleLogin, // 削除
     required this.isLoading,
   });
 
@@ -276,6 +276,10 @@ class _LoginFormWidgetState extends ConsumerState<LoginFormWidget> {
 
           SizedBox(height: 3.h),
 
+          // ---------------------------------
+          // ⬇️ Google Login Button (削除) ⬇️
+          // ---------------------------------
+          /*
           // Google Login Button
           SizedBox(
             width: double.infinity,
@@ -336,6 +340,10 @@ class _LoginFormWidgetState extends ConsumerState<LoginFormWidget> {
           ),
 
           SizedBox(height: 2.h),
+          */
+          // ---------------------------------
+          // ⬆️ 削除完了 ⬆️
+          // ---------------------------------
 
           // Login Button
           SizedBox(

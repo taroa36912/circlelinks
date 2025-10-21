@@ -4,8 +4,16 @@ import 'package:sizer/sizer.dart';
 import '../../../core/app_export.dart';
 
 class SocialLoginWidget extends StatelessWidget {
-  const SocialLoginWidget({super.key});
+  // 1. ログイン処理を実行する関数を受け取る変数を追加
+  final Future<void> Function() onGoogleLogin;
+  
+  const SocialLoginWidget({
+    super.key,
+    required this.onGoogleLogin, // 2. コンストラクタで必須にする
+  });
 
+  // 3. このファイル内の不要な _handleSocialLogin スタブは削除
+  /*
   void _handleSocialLogin(BuildContext context, String provider) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -14,6 +22,7 @@ class SocialLoginWidget extends StatelessWidget {
       ),
     );
   }
+  */
 
   @override
   Widget build(BuildContext context) {
@@ -53,7 +62,15 @@ class SocialLoginWidget extends StatelessWidget {
           width: double.infinity,
           height: 6.h,
           child: OutlinedButton.icon(
-            onPressed: () => _handleSocialLogin(context, '大学SSO'),
+            // 4. 大学SSOのダミー処理は残しておく
+            onPressed: () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('大学SSOでのログインは準備中です'),
+                  duration: Duration(seconds: 2),
+                ),
+              );
+            },
             icon: CustomIconWidget(
               iconName: 'school',
               color: AppTheme.lightTheme.colorScheme.primary,
@@ -85,13 +102,15 @@ class SocialLoginWidget extends StatelessWidget {
           width: double.infinity,
           height: 6.h,
           child: OutlinedButton.icon(
-            onPressed: () => _handleSocialLogin(context, 'Google'),
+            // 5. onPressed を、親から渡された onGoogleLogin に変更
+            onPressed: onGoogleLogin,
             icon: Container(
               width: 20,
               height: 20,
               decoration: const BoxDecoration(
                 shape: BoxShape.circle,
               ),
+              // CORSエラーを避けるため、ローカルアセットを使う
               child: Image.asset(
                 'assets/images/g-logo.png',
                 width: 20,
@@ -125,7 +144,15 @@ class SocialLoginWidget extends StatelessWidget {
           width: double.infinity,
           height: 6.h,
           child: OutlinedButton.icon(
-            onPressed: () => _handleSocialLogin(context, 'LINE'),
+            // 6. LINEのダミー処理は残しておく
+            onPressed: () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('LINEでのログインは準備中です'),
+                  duration: Duration(seconds: 2),
+                ),
+              );
+            },
             icon: Container(
               width: 20,
               height: 20,

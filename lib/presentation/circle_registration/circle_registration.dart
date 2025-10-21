@@ -184,8 +184,9 @@ class _CircleRegistrationState extends ConsumerState<CircleRegistration> {
     });
   }
 
+  // ⬇️ 削除 ⬇️
+  /*
   Future<void> _handleGoogleRegistration() async {
-    // ⬇️ 修正点 1 ⬇️
     FocusScope.of(context).unfocus(); // キーボードとIMEを閉じる
 
     setState(() {
@@ -257,6 +258,8 @@ class _CircleRegistrationState extends ConsumerState<CircleRegistration> {
       }
     }
   }
+  */
+  // ⬆️ 削除 ⬆️
 
   Widget _buildImageWidget({
     required File? imageFile,
@@ -312,10 +315,8 @@ class _CircleRegistrationState extends ConsumerState<CircleRegistration> {
         .hasMatch(email);
   }
 
-  // circle_registration.dart の _completeRegistration メソッドを以下に置き換えてください
-
   Future<void> _completeRegistration() async {
-    FocusScope.of(context).unfocus();
+    FocusScope.of(context).unfocus(); // キーボードとIMEを閉じる
 
     setState(() {
       _isLoading = true;
@@ -339,7 +340,6 @@ class _CircleRegistrationState extends ConsumerState<CircleRegistration> {
         String? coverImageUrl;
         String? verificationDocumentUrl;
 
-        // ⬇️ --- ここから修正 --- ⬇️
         if (kIsWeb) {
           // --- ✅ Webの場合 (Uint8List を使用) ---
           if (_profileImageBytes != null) {
@@ -393,7 +393,6 @@ class _CircleRegistrationState extends ConsumerState<CircleRegistration> {
             );
           }
         }
-        // ⬆️ --- ここまで修正 --- ⬆️
 
         // Create circle document
         final circle = CircleModel(
@@ -405,14 +404,16 @@ class _CircleRegistrationState extends ConsumerState<CircleRegistration> {
           category: _selectedCategory,
           description: _descriptionController.text,
           memberCount: int.tryParse(_memberCountController.text) ?? 0,
-          profileImageUrl: profileImageUrl, // 👈 修正後のURL
-          coverImageUrl: coverImageUrl, // 👈 修正後のURL
-          verificationDocumentUrl: verificationDocumentUrl, // 👈 修正後のURL
+          profileImageUrl: profileImageUrl,
+          coverImageUrl: coverImageUrl,
+          verificationDocumentUrl: verificationDocumentUrl,
           socialMediaLinks: _socialMediaLinks,
           createdAt: DateTime.now(),
           updatedAt: DateTime.now(),
           isVerified: false,
         );
+
+        print("デバッグ : ${circle.toFirestore()}");
 
         await firestoreService.createCircle(circle);
 
@@ -630,6 +631,8 @@ class _CircleRegistrationState extends ConsumerState<CircleRegistration> {
               ),
             ),
 
+          // ⬇️ 削除 ⬇️
+          /*
           SizedBox(height: 3.h),
 
           // Google Registration Option
@@ -690,6 +693,8 @@ class _CircleRegistrationState extends ConsumerState<CircleRegistration> {
               ),
             ),
           ),
+          */
+          // ⬆️ 削除 ⬆️
         ],
       ),
     );

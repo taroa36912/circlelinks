@@ -92,9 +92,8 @@ class SocialLoginWidget extends StatelessWidget {
               decoration: const BoxDecoration(
                 shape: BoxShape.circle,
               ),
-              child: CustomImageWidget(
-                imageUrl:
-                    'https://developers.google.com/identity/images/g-logo.png',
+              child: Image.asset(
+                'assets/images/g-logo.png',
                 width: 20,
                 height: 20,
                 fit: BoxFit.contain,

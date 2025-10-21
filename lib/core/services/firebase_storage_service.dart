@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'dart:io';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -6,28 +8,50 @@ class FirebaseStorageService {
   final FirebaseStorage _storage = FirebaseStorage.instance;
 
   Future<String> uploadImage({
-    required File imageFile,
+    File? imageFile,
+    Uint8List? bytes,
     required String path,
   }) async {
     try {
       final ref = _storage.ref().child(path);
-      final uploadTask = await ref.putFile(imageFile);
-      final downloadUrl = await uploadTask.ref.getDownloadURL();
-      return downloadUrl;
+      
+      if (kIsWeb && bytes != null) {
+        final uploadTask = await ref.putData(bytes);
+        final downloadUrl = await uploadTask.ref.getDownloadURL();
+        return downloadUrl;
+      } else if (!kIsWeb && imageFile != null) {
+        final uploadTask = await ref.putFile(imageFile);
+        final downloadUrl = await uploadTask.ref.getDownloadURL();
+        return downloadUrl;
+      } else {
+        throw Exception('画像データが見つかりません');
+      }
+
     } catch (e) {
       throw Exception('画像のアップロードに失敗しました: $e');
     }
   }
 
   Future<String> uploadDocument({
-    required File documentFile,
+    File? documentFile,
+    Uint8List? bytes,
     required String path,
   }) async {
     try {
       final ref = _storage.ref().child(path);
-      final uploadTask = await ref.putFile(documentFile);
-      final downloadUrl = await uploadTask.ref.getDownloadURL();
-      return downloadUrl;
+      
+      if (kIsWeb && bytes != null) {
+        final uploadTask = await ref.putData(bytes);
+        final downloadUrl = await uploadTask.ref.getDownloadURL();
+        return downloadUrl;
+      } else if (!kIsWeb && documentFile != null) {
+        final uploadTask = await ref.putFile(documentFile);
+        final downloadUrl = await uploadTask.ref.getDownloadURL();
+        return downloadUrl;
+      } else {
+        throw Exception('ドキュメントデータが見つかりません');
+      }
+
     } catch (e) {
       throw Exception('ドキュメントのアップロードに失敗しました: $e');
     }
@@ -56,4 +80,3 @@ class FirebaseStorageService {
 final firebaseStorageServiceProvider = Provider<FirebaseStorageService>((ref) {
   return FirebaseStorageService();
 });
-

@@ -1,14 +1,10 @@
 import 'dart:io';
-import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart';
 import 'package:sizer/sizer.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:image_picker/image_picker.dart';
 
 import '../../core/app_export.dart';
-import '../../widgets/custom_icon_widget.dart';
 
 class CircleRegistration extends ConsumerStatefulWidget {
   const CircleRegistration({super.key});
@@ -189,6 +185,9 @@ class _CircleRegistrationState extends ConsumerState<CircleRegistration> {
   }
 
   Future<void> _handleGoogleRegistration() async {
+    // ⬇️ 修正点 1 ⬇️
+    FocusScope.of(context).unfocus(); // キーボードとIMEを閉じる
+
     setState(() {
       _isLoading = true;
     });
@@ -313,7 +312,11 @@ class _CircleRegistrationState extends ConsumerState<CircleRegistration> {
         .hasMatch(email);
   }
 
+  // circle_registration.dart の _completeRegistration メソッドを以下に置き換えてください
+
   Future<void> _completeRegistration() async {
+    FocusScope.of(context).unfocus();
+
     setState(() {
       _isLoading = true;
     });
@@ -336,30 +339,61 @@ class _CircleRegistrationState extends ConsumerState<CircleRegistration> {
         String? coverImageUrl;
         String? verificationDocumentUrl;
 
-        if (_profileImage != null) {
-          final profilePath =
-              storageService.generateImagePath(userId, 'profile');
-          profileImageUrl = await storageService.uploadImage(
-            imageFile: _profileImage!,
-            path: profilePath,
-          );
-        }
+        // ⬇️ --- ここから修正 --- ⬇️
+        if (kIsWeb) {
+          // --- ✅ Webの場合 (Uint8List を使用) ---
+          if (_profileImageBytes != null) {
+            final profilePath =
+                storageService.generateImagePath(userId, 'profile');
+            profileImageUrl = await storageService.uploadImage(
+              bytes: _profileImageBytes!, // 👈 bytes を渡す
+              path: profilePath,
+            );
+          }
 
-        if (_coverImage != null) {
-          final coverPath = storageService.generateImagePath(userId, 'cover');
-          coverImageUrl = await storageService.uploadImage(
-            imageFile: _coverImage!,
-            path: coverPath,
-          );
-        }
+          if (_coverImageBytes != null) {
+            final coverPath = storageService.generateImagePath(userId, 'cover');
+            coverImageUrl = await storageService.uploadImage(
+              bytes: _coverImageBytes!, // 👈 bytes を渡す
+              path: coverPath,
+            );
+          }
 
-        if (_verificationDocument != null) {
-          final documentPath = storageService.generateDocumentPath(userId);
-          verificationDocumentUrl = await storageService.uploadDocument(
-            documentFile: _verificationDocument!,
-            path: documentPath,
-          );
+          if (_verificationDocumentBytes != null) {
+            final documentPath = storageService.generateDocumentPath(userId);
+            verificationDocumentUrl = await storageService.uploadDocument(
+              bytes: _verificationDocumentBytes!, // 👈 bytes を渡す
+              path: documentPath,
+            );
+          }
+        } else {
+          // --- 📱 モバイルの場合 (File を使用) ---
+          if (_profileImage != null) {
+            final profilePath =
+                storageService.generateImagePath(userId, 'profile');
+            profileImageUrl = await storageService.uploadImage(
+              imageFile: _profileImage!,
+              path: profilePath,
+            );
+          }
+
+          if (_coverImage != null) {
+            final coverPath = storageService.generateImagePath(userId, 'cover');
+            coverImageUrl = await storageService.uploadImage(
+              imageFile: _coverImage!,
+              path: coverPath,
+            );
+          }
+
+          if (_verificationDocument != null) {
+            final documentPath = storageService.generateDocumentPath(userId);
+            verificationDocumentUrl = await storageService.uploadDocument(
+              documentFile: _verificationDocument!,
+              path: documentPath,
+            );
+          }
         }
+        // ⬆️ --- ここまで修正 --- ⬆️
 
         // Create circle document
         final circle = CircleModel(
@@ -371,9 +405,9 @@ class _CircleRegistrationState extends ConsumerState<CircleRegistration> {
           category: _selectedCategory,
           description: _descriptionController.text,
           memberCount: int.tryParse(_memberCountController.text) ?? 0,
-          profileImageUrl: profileImageUrl,
-          coverImageUrl: coverImageUrl,
-          verificationDocumentUrl: verificationDocumentUrl,
+          profileImageUrl: profileImageUrl, // 👈 修正後のURL
+          coverImageUrl: coverImageUrl, // 👈 修正後のURL
+          verificationDocumentUrl: verificationDocumentUrl, // 👈 修正後のURL
           socialMediaLinks: _socialMediaLinks,
           createdAt: DateTime.now(),
           updatedAt: DateTime.now(),
@@ -394,7 +428,27 @@ class _CircleRegistrationState extends ConsumerState<CircleRegistration> {
             ),
           );
 
+          // delete spinner
+          setState(() {
+            _isLoading = false;
+          });
+
           Navigator.pushReplacementNamed(context, '/circle-discovery');
+        }
+      } else {
+        // delete spinner
+        setState(() {
+          _isLoading = false;
+        });
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('登録に失敗しました'),
+              backgroundColor: Colors.red,
+              duration: Duration(seconds: 3),
+            ),
+          );
         }
       }
     } catch (e) {

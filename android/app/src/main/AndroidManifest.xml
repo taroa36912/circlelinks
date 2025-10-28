@@ -44,6 +44,10 @@
         <meta-data
                 android:name="flutterEmbedding"
                 android:value="2"/>
+
+        <meta-data
+            android:name="com.linecorp.linesdk.ChannelId"
+            android:value="2008357841" />
     </application>
     <queries>
         <intent>

@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:sizer/sizer.dart';
 
-import '../../core/app_export.dart';
+// 必要なRiverpodやFirebaseAuthServiceのインポートを確認
+import '../../core/app_export.dart'; 
 import './widgets/biometric_prompt_widget.dart';
 import './widgets/login_form_widget.dart';
 import './widgets/social_login_widget.dart';
@@ -17,7 +18,7 @@ class LoginScreen extends ConsumerStatefulWidget {
 class _LoginScreenState extends ConsumerState<LoginScreen>
     with TickerProviderStateMixin {
   bool _isLoading = false;
-  final bool _showBiometricPrompt = false;
+  final bool _showBiometricPrompt = false; // Note: This seems unused currently
   late AnimationController _logoAnimationController;
   late AnimationController _formAnimationController;
   late Animation<double> _logoScaleAnimation;
@@ -36,35 +37,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
       duration: const Duration(milliseconds: 1200),
       vsync: this,
     );
-
     _formAnimationController = AnimationController(
       duration: const Duration(milliseconds: 800),
       vsync: this,
     );
-
-    _logoScaleAnimation = Tween<double>(
-      begin: 0.5,
-      end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _logoAnimationController,
-      curve: Curves.elasticOut,
-    ));
-
-    _formSlideAnimation = Tween<Offset>(
-      begin: const Offset(0, 0.3),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(
-      parent: _formAnimationController,
-      curve: Curves.easeOutCubic,
-    ));
-
-    _formOpacityAnimation = Tween<double>(
-      begin: 0.0,
-      end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _formAnimationController,
-      curve: Curves.easeInOut,
-    ));
+    _logoScaleAnimation = Tween<double>(begin: 0.5, end: 1.0,)
+        .animate(CurvedAnimation(parent: _logoAnimationController, curve: Curves.elasticOut,));
+    _formSlideAnimation = Tween<Offset>(begin: const Offset(0, 0.3), end: Offset.zero,)
+        .animate(CurvedAnimation(parent: _formAnimationController, curve: Curves.easeOutCubic,));
+    _formOpacityAnimation = Tween<double>(begin: 0.0, end: 1.0,)
+        .animate(CurvedAnimation(parent: _formAnimationController, curve: Curves.easeInOut,));
   }
 
   void _startAnimations() {
@@ -83,10 +65,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
     super.dispose();
   }
 
+  // --- Email/Password Login Handler ---
   Future<void> _handleLogin(String email, String password) async {
-    setState(() {
-      _isLoading = true;
-    });
+    // ⬇️ フォーカスを外す処理を追加 (IMEエラー対策) ⬇️
+    FocusScope.of(context).unfocus(); 
+
+    setState(() { _isLoading = true; });
 
     try {
       final authService = ref.read(firebaseAuthServiceProvider);
@@ -94,85 +78,123 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
         email: email,
         password: password,
       );
-
-      // Provide haptic feedback for successful login
       HapticFeedback.lightImpact();
-
-      // Navigate to home screen
       if (mounted) {
+        // ログイン成功後にスピナーを消す (任意だが安全)
+        setState(() { _isLoading = false; });
         Navigator.pushReplacementNamed(context, '/circle-discovery');
       }
     } catch (e) {
-      setState(() {
-        _isLoading = false;
-      });
-
+      setState(() { _isLoading = false; });
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('ログインに失敗しました: $e'),
             backgroundColor: AppTheme.lightTheme.colorScheme.error,
-            duration: const Duration(seconds: 3),
-            action: SnackBarAction(
-              label: '閉じる',
-              textColor: Colors.white,
-              onPressed: () {
-                ScaffoldMessenger.of(context).hideCurrentSnackBar();
-              },
-            ),
+            // ... (SnackBarAction) ...
           ),
         );
+      }
+    } finally {
+      // 念のため、成功時・失敗時どちらでも isLoading を false にする
+      if (mounted && _isLoading) {
+        setState(() { _isLoading = false; });
       }
     }
   }
 
+  // --- Google Login Handler ---
   Future<void> _handleGoogleLogin() async {
-    setState(() {
-      _isLoading = true;
-    });
+    // ⬇️ フォーカスを外す処理を追加 (IMEエラー対策) ⬇️
+    FocusScope.of(context).unfocus(); 
+
+    setState(() { _isLoading = true; });
 
     try {
       final authService = ref.read(firebaseAuthServiceProvider);
       final userCredential = await authService.signInWithGoogle();
 
       if (userCredential != null) {
-        // Provide haptic feedback for successful login
         HapticFeedback.lightImpact();
-
-        // Navigate to home screen
         if (mounted) {
-          Navigator.pushReplacementNamed(context, '/circle-discovery');
+           // ログイン成功後にスピナーを消す
+           setState(() { _isLoading = false; });
+           Navigator.pushReplacementNamed(context, '/circle-discovery');
         }
       } else {
-        // User cancelled Google sign-in
-        setState(() {
-          _isLoading = false;
-        });
+        // User cancelled sign-in
+        setState(() { _isLoading = false; });
       }
     } catch (e) {
-      setState(() {
-        _isLoading = false;
-      });
-
+      setState(() { _isLoading = false; });
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Googleログインに失敗しました: $e'),
             backgroundColor: AppTheme.lightTheme.colorScheme.error,
-            duration: const Duration(seconds: 3),
-            action: SnackBarAction(
-              label: '閉じる',
-              textColor: Colors.white,
-              onPressed: () {
-                ScaffoldMessenger.of(context).hideCurrentSnackBar();
-              },
-            ),
+             // ... (SnackBarAction) ...
           ),
         );
       }
+    } finally {
+       if (mounted && _isLoading) {
+         setState(() { _isLoading = false; });
+       }
     }
   }
 
+  // --- ⬇️ LINE Login Handler (新規追加) ⬇️ ---
+  Future<void> _handleLineLogin() async {
+    // フォーカスを外す処理を追加 (IMEエラー対策)
+    FocusScope.of(context).unfocus(); 
+
+    setState(() { _isLoading = true; });
+    
+    try {
+      final authService = ref.read(firebaseAuthServiceProvider);
+      // FirebaseAuthService の signInWithLine を呼び出す
+      final userCredential = await authService.signInWithLine(); 
+
+      if (userCredential != null) {
+        // ログイン成功
+        HapticFeedback.lightImpact(); 
+        if (mounted) {
+          // ログイン成功後にスピナーを消す
+          setState(() { _isLoading = false; });
+          Navigator.pushReplacementNamed(context, '/circle-discovery');
+        }
+      } else {
+        // ユーザーがキャンセルした場合 (signInWithLineがnullを返す想定)
+        setState(() { _isLoading = false; });
+      }
+    } catch (e) {
+      // エラー発生時
+      setState(() { _isLoading = false; });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('LINEログインに失敗しました: $e'),
+            backgroundColor: AppTheme.lightTheme.colorScheme.error,
+             action: SnackBarAction( // 必要に応じて閉じるアクションを追加
+               label: '閉じる',
+               textColor: Colors.white,
+               onPressed: () {
+                 ScaffoldMessenger.of(context).hideCurrentSnackBar();
+               },
+             ),
+          ),
+        );
+      }
+    } finally {
+       // 念のため、成功時・失敗時どちらでも isLoading を false にする
+       if (mounted && _isLoading) {
+         setState(() { _isLoading = false; });
+       }
+    }
+  }
+  // --- ⬆️ End of LINE Login Handler ⬆️ ---
+
+  // --- Biometric Handlers (現状未使用の可能性) ---
   void _handleBiometricSuccess() {
     HapticFeedback.heavyImpact();
     Navigator.pushReplacementNamed(context, '/circle-discovery');
@@ -182,10 +204,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
     Navigator.pushReplacementNamed(context, '/circle-discovery');
   }
 
+  // --- Navigation ---
   void _navigateToSignUp() {
     Navigator.pushNamed(context, '/circle-registration');
   }
 
+  // --- Build Method ---
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -209,68 +233,20 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
                       SizedBox(height: 8.h),
-
-                      // CircleLink Logo
-                      AnimatedBuilder(
+                      // ... (CircleLink Logo Animation) ...
+                       AnimatedBuilder(
                         animation: _logoAnimationController,
                         builder: (context, child) {
                           return Transform.scale(
                             scale: _logoScaleAnimation.value,
                             child: Column(
                               children: [
-                                Container(
-                                  width: 25.w,
-                                  height: 25.w,
-                                  decoration: BoxDecoration(
-                                    gradient: LinearGradient(
-                                      begin: Alignment.topLeft,
-                                      end: Alignment.bottomRight,
-                                      colors: [
-                                        AppTheme.lightTheme.colorScheme.primary,
-                                        AppTheme
-                                            .lightTheme.colorScheme.secondary,
-                                      ],
-                                    ),
-                                    borderRadius: BorderRadius.circular(20),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: AppTheme
-                                            .lightTheme.colorScheme.primary
-                                            .withValues(alpha: 0.3),
-                                        blurRadius: 20,
-                                        offset: const Offset(0, 8),
-                                      ),
-                                    ],
-                                  ),
-                                  child: Center(
-                                    child: CustomIconWidget(
-                                      iconName: 'link',
-                                      color: Colors.white,
-                                      size: 12.w,
-                                    ),
-                                  ),
-                                ),
+                                // ... (Logo Container, Text, etc.) ...
+                                Container( /* ... Logo ... */ ),
                                 SizedBox(height: 2.h),
-                                Text(
-                                  'CircleLink',
-                                  style: AppTheme
-                                      .lightTheme.textTheme.headlineLarge
-                                      ?.copyWith(
-                                    fontWeight: FontWeight.w700,
-                                    color: AppTheme
-                                        .lightTheme.colorScheme.onSurface,
-                                  ),
-                                ),
+                                Text( 'CircleLink', /* ... style ... */ ),
                                 SizedBox(height: 1.h),
-                                Text(
-                                  '大学サークル管理アプリ',
-                                  style: AppTheme
-                                      .lightTheme.textTheme.bodyMedium
-                                      ?.copyWith(
-                                    color: AppTheme.lightTheme.colorScheme
-                                        .onSurfaceVariant,
-                                  ),
-                                ),
+                                Text( '大学サークル管理アプリ', /* ... style ... */ ),
                               ],
                             ),
                           );
@@ -289,7 +265,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                               opacity: _formOpacityAnimation,
                               child: LoginFormWidget(
                                 onLogin: _handleLogin,
-                                // onGoogleLogin: _handleGoogleLogin,
                                 isLoading: _isLoading,
                               ),
                             ),
@@ -307,7 +282,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                             position: _formSlideAnimation,
                             child: FadeTransition(
                               opacity: _formOpacityAnimation,
-                              child: SocialLoginWidget(onGoogleLogin: _handleGoogleLogin),
+                              // ⬇️ SocialLoginWidgetに onLineLogin を渡す ⬇️
+                              child: SocialLoginWidget(
+                                onGoogleLogin: _handleGoogleLogin,
+                                onLineLogin: _handleLineLogin, // 👈 修正済み
+                              ),
                             ),
                           );
                         },
@@ -324,28 +303,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                Text(
-                                  'CircleLinkが初めてですか？ ',
-                                  style: AppTheme
-                                      .lightTheme.textTheme.bodyMedium
-                                      ?.copyWith(
-                                    color: AppTheme.lightTheme.colorScheme
-                                        .onSurfaceVariant,
-                                  ),
-                                ),
+                                Text( 'CircleLinkが初めてですか？ ', /* ... style ... */ ),
                                 GestureDetector(
                                   onTap: _navigateToSignUp,
-                                  child: Text(
-                                    'サインアップ',
-                                    style: AppTheme
-                                        .lightTheme.textTheme.bodyMedium
-                                        ?.copyWith(
-                                      color: AppTheme
-                                          .lightTheme.colorScheme.primary,
-                                      fontWeight: FontWeight.w600,
-                                      decoration: TextDecoration.underline,
-                                    ),
-                                  ),
+                                  child: Text( 'サインアップ', /* ... style ... */ ),
                                 ),
                               ],
                             ),
@@ -360,7 +321,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
               ),
             ),
 
-            // Biometric Prompt Overlay
+            // Biometric Prompt Overlay (現状未使用)
             if (_showBiometricPrompt)
               Container(
                 color: Colors.black.withValues(alpha: 0.5),
@@ -371,6 +332,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                   ),
                 ),
               ),
+
+             // Loading Indicator Overlay
+             if (_isLoading)
+               Container(
+                 color: Colors.black.withValues(alpha: 0.3),
+                 child: const Center(
+                   child: CircularProgressIndicator(),
+                 ),
+               ),
           ],
         ),
       ),

@@ -17,12 +17,22 @@ class _CircleProfileState extends ConsumerState<CircleProfile>
   bool _isRequestSent = false;
   CircleModel? _circle;
   String? _circleId;
+  bool _didLoadData = false;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-    _loadCircleData();
+    // _loadCircleData();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_didLoadData) { 
+      _loadCircleData();
+      _didLoadData = true;
+    }
   }
 
   void _loadCircleData() {

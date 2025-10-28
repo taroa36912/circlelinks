@@ -7,17 +7,17 @@
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:379162369299:android:70a4e0d3dc675861114ee6",
+        "mobilesdk_app_id": "1:379162369299:android:ffb19526b86aedc1114ee6",
         "android_client_info": {
-          "package_name": "com.circlelink.circlelink"
+          "package_name": "com.circlelink.app"
         }
       },
       "oauth_client": [
         {
-          "client_id": "379162369299-4a1odiok5ugeu134iq29sl09lh0bjr6g.apps.googleusercontent.com",
+          "client_id": "379162369299-6c8cpb27lodsb9euifg8o3scnlv896b4.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
-            "package_name": "com.circlelink.circlelink",
+            "package_name": "com.circlelink.app",
             "certificate_hash": "e138221268aba1aad0611fac586dce8125114604"
           }
         },

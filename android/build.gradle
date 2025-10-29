@@ -1,3 +1,23 @@
+// android/build.gradle (トップレベル)
+
+// ⬇️ --- buildscript ブロック (AGPとKotlinプラグイン定義) --- ⬇️
+buildscript {
+    ext.kotlin_version = '2.1.0' // プロジェクトで使用するKotlinバージョン
+    repositories {
+        google()
+        mavenCentral()
+    }
+    dependencies {
+        // Android Gradle Plugin のバージョン (Gradle 8.x/9.x に対応)
+        classpath 'com.android.tools.build:gradle:8.3.0' // 例: 8.3.0 (最新安定版を確認)
+        // Kotlin Gradle Plugin
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
+        // Google Services プラグイン
+        classpath 'com.google.gms:google-services:4.4.2' // プロジェクトに合わせて確認
+    }
+}
+// ⬆️ --- buildscript ブロック完了 --- ⬆️
+
 allprojects {
     repositories {
         google()
@@ -6,9 +26,38 @@ allprojects {
 }
 
 rootProject.buildDir = '../build'
+
+// ⬇️ --- QAで見つかった回避策 (ここから) --- ⬇️
+subprojects {
+    afterEvaluate { project ->
+        if (project.hasProperty('android')) {
+            android {
+                // 強制的に compileSdk を 36 に設定
+                compileSdkVersion 36
+
+                compileOptions {
+                    // Java 17 を使用
+                    sourceCompatibility JavaVersion.VERSION_17
+                    targetCompatibility JavaVersion.VERSION_17
+                }
+            }
+        }
+
+        // Kotlin コンパイルタスクの設定
+        tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {
+            kotlinOptions {
+                jvmTarget = JavaVersion.VERSION_17.toString()
+            }
+        }
+    }
+}
+// ⬆️ --- QAで見つかった回避策 (ここまで) --- ⬆️
+
+
 subprojects {
     project.buildDir = "${rootProject.buildDir}/${project.name}"
 }
+
 subprojects {
     project.evaluationDependsOn(':app')
 }

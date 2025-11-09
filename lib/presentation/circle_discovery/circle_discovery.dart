@@ -336,9 +336,22 @@ class _CircleDiscoveryState extends ConsumerState<CircleDiscovery>
                     size: 24,
                   ),
                 ),
+                // ⬇️ --- 修正点 --- ⬇️
+                IconButton(
+                  onPressed: () {
+                    // 新しいマイページルートへ遷移
+                    Navigator.pushNamed(context, '/my-page');
+                  },
+                  icon: CustomIconWidget(
+                    iconName: 'person', // または 'account_circle'
+                    color: colorScheme.onSurface,
+                    size: 24,
+                  ),
+                ),
+                // ⬆️ --- 修正点 --- ⬆️
               ],
               bottom: PreferredSize(
-                preferredSize: Size.fromHeight(29.h),
+                preferredSize: Size.fromHeight(29.h), // 修正済み
                 child: Container(
                   color: colorScheme.surface,
                   child: Column(

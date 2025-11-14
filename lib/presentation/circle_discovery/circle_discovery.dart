@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:sizer/sizer.dart';
 
 import '../../core/app_export.dart';
+import '../my_page/widgets/app_menu_drawer.dart';
 import './widgets/circle_card_widget.dart';
 import './widgets/empty_state_widget.dart';
 import './widgets/filter_chip_widget.dart';
@@ -21,6 +22,8 @@ class _CircleDiscoveryState extends ConsumerState<CircleDiscovery>
   late TabController _tabController;
   final TextEditingController _searchController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
+  
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
   String _currentSort = 'Relevance';
   String _searchQuery = '';
@@ -310,7 +313,11 @@ class _CircleDiscoveryState extends ConsumerState<CircleDiscovery>
     final colorScheme = theme.colorScheme;
 
     return Scaffold(
+      key: _scaffoldKey, // ScaffoldKey を設定
       backgroundColor: colorScheme.surface,
+      
+      endDrawer: const AppMenuDrawer(), // 右側ドロワー
+      
       body: NestedScrollView(
         headerSliverBuilder: (context, innerBoxIsScrolled) {
           return [
@@ -329,29 +336,20 @@ class _CircleDiscoveryState extends ConsumerState<CircleDiscovery>
               foregroundColor: colorScheme.onSurface,
               actions: [
                 IconButton(
-                  onPressed: () => Navigator.pushNamed(context, '/connections'),
-                  icon: CustomIconWidget(
-                    iconName: 'people',
-                    color: colorScheme.onSurface,
-                    size: 24,
-                  ),
-                ),
-                // ⬇️ --- 修正点 --- ⬇️
-                IconButton(
                   onPressed: () {
-                    // 新しいマイページルートへ遷移
-                    Navigator.pushNamed(context, '/my-page');
+                    _scaffoldKey.currentState?.openEndDrawer(); 
                   },
                   icon: CustomIconWidget(
-                    iconName: 'person', // または 'account_circle'
+                    iconName: 'menu', 
                     color: colorScheme.onSurface,
                     size: 24,
                   ),
                 ),
-                // ⬆️ --- 修正点 --- ⬆️
               ],
               bottom: PreferredSize(
-                preferredSize: Size.fromHeight(29.h), // 修正済み
+                // ⬇️ --- 修正点 --- ⬇️
+                preferredSize: Size.fromHeight(30.h), // 29.h から 30.h に増やして余裕を持たせる
+                // ⬆️ --- 修正点 --- ⬆️
                 child: Container(
                   color: colorScheme.surface,
                   child: Column(

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:sizer/sizer.dart';
-import '../../../core/app_export.dart'; // app_export.dart (RiverpodとServiceを含む)
+import '../../core/app_export.dart'; // app_export.dart (RiverpodとServiceを含む)
 
 class AppMenuDrawer extends ConsumerStatefulWidget {
   const AppMenuDrawer({super.key});
@@ -27,7 +27,6 @@ class _AppMenuDrawerState extends ConsumerState<AppMenuDrawer> {
     final user = authService.currentUser;
     if (user == null) {
       setState(() { _isLoading = false; });
-      // ログイン画面に戻す
       if (mounted) {
         Navigator.of(context).pushNamedAndRemoveUntil(AppRoutes.login, (route) => false);
       }
@@ -37,11 +36,10 @@ class _AppMenuDrawerState extends ConsumerState<AppMenuDrawer> {
 
     try {
       final firestoreService = ref.read(firestoreServiceProvider);
-      // ログインユーザーIDに紐づくサークル情報を取得
       final circle = await firestoreService.getCircle(user.uid); 
       if (mounted) {
         setState(() {
-          _myCircleData = circle; // 👈 サークルがあればセット、なければ null のまま
+          _myCircleData = circle; 
           _isLoading = false;
         });
       }
@@ -49,7 +47,6 @@ class _AppMenuDrawerState extends ConsumerState<AppMenuDrawer> {
       if (mounted) {
         setState(() { _isLoading = false; });
       }
-      // サークルが存在しないのはエラーではないので、ログ出力のみ
       print("Drawer: サークル情報はまだ登録されていません。 $e");
     }
   }
@@ -73,8 +70,7 @@ class _AppMenuDrawerState extends ConsumerState<AppMenuDrawer> {
   }
 
   void _showComingSoonSnackBar() {
-    // ドロワーが開いている場合、スナックバーの前にドロワーを閉じる
-    Navigator.pop(context); 
+    Navigator.pop(context); // ドロワーを閉じる
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Text('この機能は現在準備中です'),
@@ -87,20 +83,28 @@ class _AppMenuDrawerState extends ConsumerState<AppMenuDrawer> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     
-    // サークル情報（_myCircleData）が null かどうかで表示を切り替える
     final bool hasCircle = _myCircleData != null;
     final String displayName = _myCircleData?.circleName ?? _currentUser?.email ?? 'ゲスト';
     final String? profileImageUrl = _myCircleData?.profileImageUrl;
 
     return Drawer(
-      width: 75.w,
+      width: 75.w, 
       child: ListView(
         padding: EdgeInsets.zero,
         children: [
-          // --- 1. プロフィールヘッダー ---
           _buildDrawerHeader(theme, displayName, profileImageUrl, hasCircle),
           
-          // ⬇️ --- 修正: サークル作成済みかどうかでメニューを切り替え --- ⬇️
+          // ⬇️ --- DM一覧 (常に表示) を追加 --- ⬇️
+          _buildMenuItem(
+            theme,
+            icon: Icons.chat_bubble_outline,
+            title: "DM一覧",
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.pushNamed(context, AppRoutes.dmList); 
+            },
+          ),
+          // ⬆️ --- 追加ここまで --- ⬆️
 
           if (_isLoading) ...[
             const Padding(
@@ -112,25 +116,34 @@ class _AppMenuDrawerState extends ConsumerState<AppMenuDrawer> {
             _buildMenuSection(theme, "サークル機能"),
             _buildMenuItem(
               theme,
+              icon: Icons.admin_panel_settings_outlined, 
+              title: "サークル管理",
+              onTap: () {
+                Navigator.pop(context); 
+                Navigator.pushNamed(context, AppRoutes.circleAdmin);
+              },
+            ),
+            _buildMenuItem(
+              theme,
               icon: Icons.group_outlined,
               title: "所属サークル一覧",
-              onTap: _showComingSoonSnackBar, // TODO: '/my-circles' ページを実装
+              onTap: _showComingSoonSnackBar,
             ),
             _buildMenuItem(
               theme,
               icon: Icons.work_outline,
               title: "Myポートフォリオ",
               onTap: () {
-                Navigator.pop(context);
+                Navigator.pop(context); 
                 Navigator.pushNamed(context, AppRoutes.portfolioBuilder); 
               },
             ),
             _buildMenuItem(
               theme,
               icon: Icons.people_outline,
-              title: "コネクション管理",
+              title: "サークル間コネクション",
               onTap: () {
-                Navigator.pop(context);
+                Navigator.pop(context); 
                 Navigator.pushNamed(context, AppRoutes.connections);
               },
             ),
@@ -139,37 +152,37 @@ class _AppMenuDrawerState extends ConsumerState<AppMenuDrawer> {
               icon: Icons.add_circle_outline,
               title: "イベント作成",
               onTap: () {
-                Navigator.pop(context);
+                Navigator.pop(context); 
                 Navigator.pushNamed(context, AppRoutes.eventCreation);
               },
             ),
 
           ] else ...[
             // --- ❌ サークル未作成のメニュー ---
-            _buildMenuSection(theme, "はじめに"),
             _buildMenuItem(
               theme,
-              icon: Icons.add_business_outlined, // 別のアイコン
+              icon: Icons.add_business_outlined, 
               title: "サークルを登録する",
               onTap: () {
-                Navigator.pop(context); // ドロワーを閉じる
-                Navigator.pushNamed(context, AppRoutes.circleRegistration); // サークル登録画面へ
+                Navigator.pop(context); 
+                Navigator.pushNamed(context, AppRoutes.circleRegistration); 
               },
-            ),
-            _buildMenuItem(
-              theme,
-              icon: Icons.search,
-              title: "既存のサークルに参加", // 将来的な機能
-              onTap: _showComingSoonSnackBar,
             ),
           ],
           
-          // --- ⬆️ 修正ここまで ⬆️ ---
-
           const Divider(),
 
-          // --- 3. アプリ設定 (共通) ---
-          _buildMenuSection(theme, "設定"),
+          // --- アカウントと設定 (共通) ---
+          _buildMenuSection(theme, "アカウントと設定"),
+          _buildMenuItem(
+            theme,
+            icon: Icons.account_circle_outlined,
+            title: "プロフィール設定",
+            onTap: () {
+              Navigator.pop(context); 
+              _showComingSoonSnackBar(); 
+            },
+          ),
           _buildMenuItem(
             theme,
             icon: Icons.notifications_outlined,
@@ -177,7 +190,6 @@ class _AppMenuDrawerState extends ConsumerState<AppMenuDrawer> {
             onTap: _showComingSoonSnackBar,
           ),
           
-          // --- 4. サポート (共通) ---
           _buildMenuSection(theme, "サポート"),
           _buildMenuItem(
             theme,
@@ -188,7 +200,6 @@ class _AppMenuDrawerState extends ConsumerState<AppMenuDrawer> {
           
           const Divider(),
 
-          // --- 5. アカウント操作 (共通) ---
           _buildMenuItem(
             theme,
             icon: Icons.logout,
@@ -221,7 +232,6 @@ class _AppMenuDrawerState extends ConsumerState<AppMenuDrawer> {
         backgroundImage: (profileImageUrl != null) ? NetworkImage(profileImageUrl) : null,
         child: (profileImageUrl == null) 
           ? Icon(
-              // サークル未作成の場合はアカウントアイコン、作成済みの場合はグループアイコン
               hasCircle ? Icons.group_outlined : Icons.person_outline, 
               size: 40,
               color: theme.colorScheme.primary,
@@ -232,15 +242,12 @@ class _AppMenuDrawerState extends ConsumerState<AppMenuDrawer> {
         color: theme.colorScheme.primary,
       ),
       onDetailsPressed: () {
-        // --- アカウント設定画面へ遷移 ---
-        Navigator.pop(context); // ドロワーを閉じる
-        _showComingSoonSnackBar(); // TODO: '/account-settings' ページを実装
-        // Navigator.pushNamed(context, '/account-settings');
+        Navigator.pop(context); 
+        _showComingSoonSnackBar(); 
       },
     );
   }
   
-  // セクションヘッダー
   Widget _buildMenuSection(ThemeData theme, String title) {
     return Padding(
       padding: EdgeInsets.fromLTRB(4.w, 3.h, 4.w, 1.h),
@@ -255,7 +262,6 @@ class _AppMenuDrawerState extends ConsumerState<AppMenuDrawer> {
     );
   }
 
-  // メニュー項目
   Widget _buildMenuItem(ThemeData theme, {
     required IconData icon,
     required String title,

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:sizer/sizer.dart';
 
 import '../../core/app_export.dart';
-import '../my_page/widgets/app_menu_drawer.dart';
+import '../../widgets/app_menu_drawer.dart';
 import './widgets/circle_card_widget.dart';
 import './widgets/empty_state_widget.dart';
 import './widgets/filter_chip_widget.dart';
@@ -347,9 +347,7 @@ class _CircleDiscoveryState extends ConsumerState<CircleDiscovery>
                 ),
               ],
               bottom: PreferredSize(
-                // ⬇️ --- 修正点 --- ⬇️
-                preferredSize: Size.fromHeight(30.h), // 29.h から 30.h に増やして余裕を持たせる
-                // ⬆️ --- 修正点 --- ⬆️
+                preferredSize: Size.fromHeight(31.h),
                 child: Container(
                   color: colorScheme.surface,
                   child: Column(

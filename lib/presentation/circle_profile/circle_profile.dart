@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:sizer/sizer.dart';
+  
+
 
 import '../../core/app_export.dart';
 
@@ -14,47 +16,69 @@ class _CircleProfileState extends ConsumerState<CircleProfile>
     with TickerProviderStateMixin {
   late TabController _tabController;
   bool _isLoading = false;
-  bool _isRequestSent = false;
+  // bool _isRequestSent = false; 
   CircleModel? _circle;
   String? _circleId;
   bool _didLoadData = false;
+  
+  CircleModel? _currentUserCircle; 
+  User? _currentUser;
+  bool _isOwner = false; 
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-    // _loadCircleData();
   }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     if (!_didLoadData) { 
-      _loadCircleData();
+      _loadData();
       _didLoadData = true;
     }
   }
+  
+  void _loadData() async {
+    setState(() { _isLoading = true; });
+    
+    final authService = ref.read(firebaseAuthServiceProvider);
+    _currentUser = authService.currentUser;
+    if (_currentUser == null) {
+      Navigator.pop(context); 
+      return;
+    }
 
-  void _loadCircleData() {
     final args =
         ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
-    if (args != null && args['circleId'] != null) {
-      _circleId = args['circleId'] as String;
-      _fetchCircle();
+    if (args == null || args['circleId'] == null) {
+      setState(() { _isLoading = false; });
+      return; 
     }
+    _circleId = args['circleId'] as String;
+    
+    if (_currentUser!.uid == _circleId) {
+      setState(() { _isOwner = true; });
+    }
+
+    final firestoreService = ref.read(firestoreServiceProvider);
+    try {
+      _currentUserCircle = await firestoreService.getCircle(_currentUser!.uid);
+    } catch (e) {
+      print("DM送信者情報の取得に失敗 (サークル未登録の個人ユーザー): $e");
+    }
+
+    await _fetchCircle(firestoreService); // 👈 ここは正しく firestoreService (FirestoreService型) を渡している
   }
 
-  Future<void> _fetchCircle() async {
+  // ⬇️ --- 修正点 --- ⬇️
+  Future<void> _fetchCircle(FirestoreService firestoreService) async { // 👈 FirebaseFirestoreService -> FirestoreService
+  // ⬆️ --- 修正点 --- ⬆️
     if (_circleId == null) return;
-
-    setState(() {
-      _isLoading = true;
-    });
-
+    
     try {
-      final firestoreService = ref.read(firestoreServiceProvider);
       final circle = await firestoreService.getCircle(_circleId!);
-
       if (mounted) {
         setState(() {
           _circle = circle;
@@ -149,7 +173,7 @@ class _CircleProfileState extends ConsumerState<CircleProfile>
                           end: Alignment.bottomCenter,
                           colors: [
                             Colors.transparent,
-                            Colors.black.withValues(alpha: 0.7),
+                            Colors.black.withOpacity(0.7),
                           ],
                         ),
                       ),
@@ -208,11 +232,13 @@ class _CircleProfileState extends ConsumerState<CircleProfile>
           ],
         ),
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _isRequestSent ? null : _handleSendConnectionRequest,
-        label: Text(_isRequestSent ? 'リクエスト送信済み' : 'コネクションリクエスト'),
-        icon: Icon(_isRequestSent ? Icons.check : Icons.send),
-      ),
+      floatingActionButton: _isOwner
+          ? null 
+          : FloatingActionButton.extended(
+              onPressed: _handleSendDm,
+              label: const Text('DMを送信'),
+              icon: const Icon(Icons.message_outlined),
+            ),
     );
   }
 
@@ -454,14 +480,14 @@ class _CircleProfileState extends ConsumerState<CircleProfile>
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'コネクションについて',
+                    'DM (ダイレクトメッセージ) について', 
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(
                           fontWeight: FontWeight.w600,
                         ),
-                  ),
+                  ), 
                   SizedBox(height: 2.h),
                   Text(
-                    'コネクションリクエストを送信すると、このサークルとチャットができるようになります。お互いの活動について情報交換したり、共同イベントの企画などが可能です。',
+                    '「DMを送信」ボタンを押すと、このサークルの管理者と直接メッセージのやり取りを開始できます。',
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                           height: 1.6,
                         ),
@@ -475,67 +501,44 @@ class _CircleProfileState extends ConsumerState<CircleProfile>
     );
   }
 
-  Future<void> _handleSendConnectionRequest() async {
-    if (_circle == null) return;
+  Future<void> _handleSendDm() async {
+    if (_circle == null || _currentUser == null) return;
+
+    final String individualName = _currentUserCircle?.circleName ?? 
+                                _currentUser!.displayName ?? 
+                                _currentUser!.email?.split('@').first ?? 
+                                'ゲストユーザー';
+    
+    final String circleId = _circle!.id;
+    final String circleName = _circle!.circleName;
+    final String? circleAvatarUrl = _circle!.profileImageUrl;
 
     try {
-      final authService = ref.read(firebaseAuthServiceProvider);
       final firestoreService = ref.read(firestoreServiceProvider);
-      final currentUser = authService.currentUser;
 
-      if (currentUser == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('ログインが必要です'),
-            backgroundColor: Colors.red,
-          ),
-        );
-        return;
-      }
-
-      // Get current user's circle information
-      final currentUserCircle =
-          await firestoreService.getCircle(currentUser.uid);
-      if (currentUserCircle == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('サークル情報が見つかりません'),
-            backgroundColor: Colors.red,
-          ),
-        );
-        return;
-      }
-
-      // Create connection request
-      final request = ConnectionRequestModel(
-        id: '', // Will be set by Firestore
-        fromCircleId: currentUser.uid,
-        toCircleId: _circle!.id,
-        fromCircleName: currentUserCircle.circleName,
-        toCircleName: _circle!.circleName,
-        fromUniversityName: currentUserCircle.universityName,
-        toUniversityName: _circle!.universityName,
-        status: ConnectionStatus.pending,
-        createdAt: DateTime.now(),
-        updatedAt: DateTime.now(),
+      final channelId = await firestoreService.getOrCreateDmChannel(
+        individualId: _currentUser!.uid,
+        circleId: circleId,
+        individualName: individualName,
+        circleName: circleName,
+        circleAvatarUrl: circleAvatarUrl,
       );
 
-      await firestoreService.sendConnectionRequest(request);
+      if (mounted) {
+        Navigator.pushNamed(
+          context,
+          AppRoutes.dmChat,
+          arguments: {
+            'dmChannelId': channelId,
+            'recipientName': circleName, 
+          },
+        );
+      }
 
-      setState(() {
-        _isRequestSent = true;
-      });
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('コネクションリクエストを送信しました'),
-          backgroundColor: Colors.green,
-        ),
-      );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('リクエストの送信に失敗しました: $e'),
+          content: Text('DMの開始に失敗しました: $e'),
           backgroundColor: Colors.red,
         ),
       );
@@ -574,14 +577,19 @@ class _CircleProfileState extends ConsumerState<CircleProfile>
                     ),
                   ),
                   SizedBox(height: 3.h),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: [
-                      _buildShareOption("link", "リンクをコピー"),
-                      _buildShareOption("message", "メッセージ"),
-                      _buildShareOption("email", "メール"),
-                      _buildShareOption("more_horiz", "その他"),
-                    ],
+                  SingleChildScrollView( 
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: [
+                        _buildShareOption("link", "リンクをコピー"),
+                        SizedBox(width: 4.w), 
+                        _buildShareOption("message", "メッセージ"),
+                        SizedBox(width: 4.w), 
+                        _buildShareOption("email", "メール"),
+                        SizedBox(width: 4.w), 
+                        _buildShareOption("more_horiz", "その他"),
+                      ],
+                    ),
                   ),
                   SizedBox(height: 3.h),
                 ],
@@ -617,9 +625,15 @@ class _CircleProfileState extends ConsumerState<CircleProfile>
             ),
           ),
           SizedBox(height: 1.h),
-          Text(
-            label,
-            style: AppTheme.lightTheme.textTheme.bodySmall,
+          SizedBox( 
+            width: 14.w, 
+            child: Text(
+              label,
+              style: AppTheme.lightTheme.textTheme.bodySmall,
+              textAlign: TextAlign.center, 
+              maxLines: 2, 
+              overflow: TextOverflow.ellipsis, 
+            ),
           ),
         ],
       ),

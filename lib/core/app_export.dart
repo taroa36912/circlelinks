@@ -16,6 +16,8 @@ export '../theme/app_theme.dart';
 export 'models/circle_model.dart';
 export 'models/connection_request_model.dart';
 export 'models/message_model.dart';
+export 'models/dm_message_model.dart';
+export 'models/dm_channel_model.dart';
 
 // Services
 export 'services/firebase_auth_service.dart';

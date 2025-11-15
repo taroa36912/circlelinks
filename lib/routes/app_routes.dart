@@ -54,6 +54,7 @@ class AppRoutes {
       );
     },
 
+    dmList: (context) => const DmListScreen(),
     eventCreation: (context) => const EventCreation(),
     eventDetails: (context) => const EventDetails(),
     connections: (context) => const Connections(),

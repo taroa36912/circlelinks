@@ -90,19 +90,15 @@ class FirebaseAuthService {
 
       // 2. Cloud Functionsを呼び出してカスタムトークンを取得
       final callable = _functions.httpsCallable('verifyLineToken');
-      print('Calling Cloud Function with LINE ID Token...'); 
       final response = await callable.call<Map<String, dynamic>>({'idToken': idToken});
       final customToken = response.data['customToken'] as String?;
-      print('Received custom token from Cloud Function.'); 
 
       if (customToken == null) {
         throw 'Firebaseカスタムトークンが取得できませんでした。Cloud Functionsのログを確認してください。';
       }
 
       // 3. カスタムトークンでFirebaseにサインイン
-      print('Signing in to Firebase with custom token...'); 
       UserCredential userCredential = await _auth.signInWithCustomToken(customToken);
-      print('Firebase sign-in successful.'); 
       return userCredential;
 
     } on FirebaseFunctionsException catch (e) { // 👈 Functionsエラーを先にキャッチ (修正済み)

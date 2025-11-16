@@ -44,7 +44,6 @@ class _EventCreationState extends State<EventCreation> {
   bool _advancedOptionsExpanded = false;
 
   // UI State
-  bool _isLoading = false;
   bool _isDraftSaved = false;
 
   @override
@@ -766,8 +765,6 @@ class _EventCreationState extends State<EventCreation> {
   Future<void> _createEvent() async {
     if (!_isFormValid()) return;
 
-    setState(() => _isLoading = true);
-
     try {
       // Simulate API call to create event
       await Future.delayed(const Duration(seconds: 2));
@@ -818,7 +815,6 @@ class _EventCreationState extends State<EventCreation> {
         ),
       );
     } finally {
-      setState(() => _isLoading = false);
     }
   }
 }

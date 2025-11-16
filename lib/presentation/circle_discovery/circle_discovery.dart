@@ -27,7 +27,6 @@ class _CircleDiscoveryState extends ConsumerState<CircleDiscovery>
 
   String _currentSort = 'Relevance';
   String _searchQuery = '';
-  bool _isLoading = false;
   bool _isLoadingMore = false;
 
   Map<String, dynamic> _activeFilters = {
@@ -219,14 +218,12 @@ class _CircleDiscoveryState extends ConsumerState<CircleDiscovery>
 
   Future<void> _refreshCircles() async {
     setState(() {
-      _isLoading = true;
     });
 
     // Refresh data from Firebase
     _loadCircles();
 
     setState(() {
-      _isLoading = false;
     });
   }
 

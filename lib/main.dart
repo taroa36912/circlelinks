@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:sizer/sizer.dart';
-import 'package:firebase_core/firebase_core.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_line_sdk/flutter_line_sdk.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 
@@ -22,12 +20,9 @@ void main() async {
   if (!kIsWeb) { 
     try {
       await LineSDK.instance.setup("2008357841"); 
-      print("LINE SDK setup successful for mobile.");
     } catch (e) {
       print("LINE SDK setup failed: $e");
     }
-  } else {
-    print("Running on Web, skipping LINE SDK setup.");
   }
 
   bool hasShownError = false;

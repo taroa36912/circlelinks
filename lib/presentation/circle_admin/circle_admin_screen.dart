@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:sizer/sizer.dart';
 import '../../core/app_export.dart'; // app_export.dart (RiverpodとServiceを含む)
 
 class CircleAdminScreen extends ConsumerStatefulWidget {

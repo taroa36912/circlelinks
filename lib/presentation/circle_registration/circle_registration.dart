@@ -282,14 +282,7 @@ class _CircleRegistrationState extends ConsumerState<CircleRegistration> {
           updatedAt: DateTime.now(),
           isVerified: false,
         );
-
-        print("デバッグ (サークル作成) : ${circle.toFirestore()}");
-
-        // ⬇️ 修正: createCircle はドキュメントIDとして userId を使用する
         await firestoreService.createCircle(circle); 
-        // ⬆️ (もし createCircle が CircleModel の id を使わないなら、
-        // 　  await firestoreService.setCircle(userId, circle); のようなメソッドが必要)
-
         HapticFeedback.lightImpact();
 
         if (mounted) {

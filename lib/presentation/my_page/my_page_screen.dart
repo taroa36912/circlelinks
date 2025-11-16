@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:sizer/sizer.dart';
 import '../../core/app_export.dart'; // app_export.dart (RiverpodとServiceを含む)
-import 'package:flutter/foundation.dart' show kIsWeb; // App Version表示用
 
 class MyPageScreen extends ConsumerStatefulWidget {
   const MyPageScreen({super.key});

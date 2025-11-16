@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:sizer/sizer.dart';
-  
-
 
 import '../../core/app_export.dart';
 
@@ -35,7 +33,7 @@ class _CircleProfileState extends ConsumerState<CircleProfile>
   void didChangeDependencies() {
     super.didChangeDependencies();
     if (!_didLoadData) { 
-      _loadData();
+      _loadData(); 
       _didLoadData = true;
     }
   }
@@ -69,12 +67,10 @@ class _CircleProfileState extends ConsumerState<CircleProfile>
       print("DM送信者情報の取得に失敗 (サークル未登録の個人ユーザー): $e");
     }
 
-    await _fetchCircle(firestoreService); // 👈 ここは正しく firestoreService (FirestoreService型) を渡している
+    await _fetchCircle(firestoreService);
   }
 
-  // ⬇️ --- 修正点 --- ⬇️
-  Future<void> _fetchCircle(FirestoreService firestoreService) async { // 👈 FirebaseFirestoreService -> FirestoreService
-  // ⬆️ --- 修正点 --- ⬆️
+  Future<void> _fetchCircle(FirestoreService firestoreService) async {
     if (_circleId == null) return;
     
     try {
@@ -255,78 +251,22 @@ class _CircleProfileState extends ConsumerState<CircleProfile>
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    '基本情報',
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.w600,
-                        ),
-                  ),
+                  Text('基本情報', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600,),),
                   SizedBox(height: 2.h),
-                  Row(
-                    children: [
-                      Icon(Icons.school,
-                          color: Theme.of(context).colorScheme.primary),
-                      SizedBox(width: 2.w),
-                      Expanded(
-                        child: Text(
-                          _circle!.universityName,
-                          style: Theme.of(context).textTheme.bodyLarge,
-                        ),
-                      ),
-                    ],
-                  ),
+                  Row(children: [Icon(Icons.school, color: Theme.of(context).colorScheme.primary), SizedBox(width: 2.w), Expanded(child: Text(_circle!.universityName, style: Theme.of(context).textTheme.bodyLarge,),),],),
                   SizedBox(height: 1.h),
-                  Row(
-                    children: [
-                      Icon(Icons.category,
-                          color: Theme.of(context).colorScheme.primary),
-                      SizedBox(width: 2.w),
-                      Expanded(
-                        child: Text(
-                          _circle!.category,
-                          style: Theme.of(context).textTheme.bodyLarge,
-                        ),
-                      ),
-                    ],
-                  ),
+                  Row(children: [Icon(Icons.category, color: Theme.of(context).colorScheme.primary), SizedBox(width: 2.w), Expanded(child: Text(_circle!.category, style: Theme.of(context).textTheme.bodyLarge,),),],),
                   SizedBox(height: 1.h),
-                  Row(
-                    children: [
-                      Icon(Icons.people,
-                          color: Theme.of(context).colorScheme.primary),
-                      SizedBox(width: 2.w),
-                      Expanded(
-                        child: Text(
-                          '${_circle!.memberCount} メンバー',
-                          style: Theme.of(context).textTheme.bodyLarge,
-                        ),
-                      ),
-                    ],
-                  ),
+                  Row(children: [Icon(Icons.people, color: Theme.of(context).colorScheme.primary), SizedBox(width: 2.w), Expanded(child: Text('${_circle!.memberCount} メンバー', style: Theme.of(context).textTheme.bodyLarge,),),],),
                   if (_circle!.isVerified) ...[
                     SizedBox(height: 1.h),
-                    Row(
-                      children: [
-                        Icon(Icons.verified, color: Colors.green),
-                        SizedBox(width: 2.w),
-                        Text(
-                          '大学公認サークル',
-                          style:
-                              Theme.of(context).textTheme.bodyLarge?.copyWith(
-                                    color: Colors.green,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                        ),
-                      ],
-                    ),
+                    Row(children: [Icon(Icons.verified, color: Colors.green), SizedBox(width: 2.w), Text('大学公認サークル', style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: Colors.green, fontWeight: FontWeight.w600,),),],),
                   ],
                 ],
               ),
             ),
           ),
-
           SizedBox(height: 2.h),
-
           // Description
           Card(
             child: Padding(
@@ -334,27 +274,15 @@ class _CircleProfileState extends ConsumerState<CircleProfile>
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    '活動内容',
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.w600,
-                        ),
-                  ),
+                  Text('活動内容', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600,),),
                   SizedBox(height: 2.h),
-                  Text(
-                    _circle!.description,
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          height: 1.6,
-                        ),
-                  ),
+                  Text(_circle!.description, style: Theme.of(context).textTheme.bodyMedium?.copyWith(height: 1.6,),),
                 ],
               ),
             ),
           ),
-
           if (_circle!.socialMediaLinks.isNotEmpty) ...[
             SizedBox(height: 2.h),
-
             // Social Media Links
             Card(
               child: Padding(
@@ -362,12 +290,7 @@ class _CircleProfileState extends ConsumerState<CircleProfile>
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      'ソーシャルメディア',
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                            fontWeight: FontWeight.w600,
-                          ),
-                    ),
+                    Text('ソーシャルメディア', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600,),),
                     SizedBox(height: 2.h),
                     ...List.generate(_circle!.socialMediaLinks.length, (index) {
                       final link = _circle!.socialMediaLinks[index];
@@ -375,22 +298,8 @@ class _CircleProfileState extends ConsumerState<CircleProfile>
                         padding: EdgeInsets.only(bottom: 1.h),
                         child: Row(
                           children: [
-                            Icon(Icons.link,
-                                color: Theme.of(context).colorScheme.primary),
-                            SizedBox(width: 2.w),
-                            Expanded(
-                              child: Text(
-                                link,
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .bodyMedium
-                                    ?.copyWith(
-                                      color:
-                                          Theme.of(context).colorScheme.primary,
-                                      decoration: TextDecoration.underline,
-                                    ),
-                              ),
-                            ),
+                            Icon(Icons.link, color: Theme.of(context).colorScheme.primary), SizedBox(width: 2.w),
+                            Expanded(child: Text(link, style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Theme.of(context).colorScheme.primary, decoration: TextDecoration.underline,),),),
                           ],
                         ),
                       );
@@ -417,61 +326,18 @@ class _CircleProfileState extends ConsumerState<CircleProfile>
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    '連絡先情報',
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.w600,
-                        ),
-                  ),
+                  Text('連絡先情報', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600,),),
                   SizedBox(height: 2.h),
-                  Row(
-                    children: [
-                      Icon(Icons.email,
-                          color: Theme.of(context).colorScheme.primary),
-                      SizedBox(width: 2.w),
-                      Expanded(
-                        child: Text(
-                          _circle!.email,
-                          style: Theme.of(context).textTheme.bodyLarge,
-                        ),
-                      ),
-                    ],
-                  ),
+                  Row(children: [Icon(Icons.email, color: Theme.of(context).colorScheme.primary), SizedBox(width: 2.w), Expanded(child: Text(_circle!.email, style: Theme.of(context).textTheme.bodyLarge,),),],),
                   SizedBox(height: 1.h),
-                  Row(
-                    children: [
-                      Icon(Icons.school,
-                          color: Theme.of(context).colorScheme.primary),
-                      SizedBox(width: 2.w),
-                      Expanded(
-                        child: Text(
-                          _circle!.universityName,
-                          style: Theme.of(context).textTheme.bodyLarge,
-                        ),
-                      ),
-                    ],
-                  ),
+                  Row(children: [Icon(Icons.school, color: Theme.of(context).colorScheme.primary), SizedBox(width: 2.w), Expanded(child: Text(_circle!.universityName, style: Theme.of(context).textTheme.bodyLarge,),),],),
                   SizedBox(height: 1.h),
-                  Row(
-                    children: [
-                      Icon(Icons.group,
-                          color: Theme.of(context).colorScheme.primary),
-                      SizedBox(width: 2.w),
-                      Expanded(
-                        child: Text(
-                          _circle!.circleName,
-                          style: Theme.of(context).textTheme.bodyLarge,
-                        ),
-                      ),
-                    ],
-                  ),
+                  Row(children: [Icon(Icons.group, color: Theme.of(context).colorScheme.primary), SizedBox(width: 2.w), Expanded(child: Text(_circle!.circleName, style: Theme.of(context).textTheme.bodyLarge,),),],),
                 ],
               ),
             ),
           ),
-
           SizedBox(height: 2.h),
-
           // Connection Request Info
           Card(
             child: Padding(
@@ -479,19 +345,9 @@ class _CircleProfileState extends ConsumerState<CircleProfile>
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    'DM (ダイレクトメッセージ) について', 
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.w600,
-                        ),
-                  ), 
+                  Text('DM (ダイレクトメッセージ) について', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600,),), 
                   SizedBox(height: 2.h),
-                  Text(
-                    '「DMを送信」ボタンを押すと、このサークルの管理者と直接メッセージのやり取りを開始できます。',
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          height: 1.6,
-                        ),
-                  ),
+                  Text('「DMを送信」ボタンを押すと、このサークルの管理者と直接メッセージのやり取りを開始できます。', style: Theme.of(context).textTheme.bodyMedium?.copyWith(height: 1.6,),),
                 ],
               ),
             ),
@@ -502,13 +358,20 @@ class _CircleProfileState extends ConsumerState<CircleProfile>
   }
 
   Future<void> _handleSendDm() async {
-    if (_circle == null || _currentUser == null) return;
-
+    if (_currentUser == null) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('デバッグエラー: ユーザーが null です'), backgroundColor: Colors.red,));
+      return;
+    }
+    if (_circle == null) {
+      return;
+    }
+    
+    // 自分のサークル情報（_currentUserCircle）は _loadData で取得済み
     final String individualName = _currentUserCircle?.circleName ?? 
                                 _currentUser!.displayName ?? 
                                 _currentUser!.email?.split('@').first ?? 
                                 'ゲストユーザー';
-    
+
     final String circleId = _circle!.id;
     final String circleName = _circle!.circleName;
     final String? circleAvatarUrl = _circle!.profileImageUrl;
@@ -523,7 +386,7 @@ class _CircleProfileState extends ConsumerState<CircleProfile>
         circleName: circleName,
         circleAvatarUrl: circleAvatarUrl,
       );
-
+      
       if (mounted) {
         Navigator.pushNamed(
           context,
@@ -535,10 +398,10 @@ class _CircleProfileState extends ConsumerState<CircleProfile>
         );
       }
 
-    } catch (e) {
+    } catch (e) {      
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('DMの開始に失敗しました: $e'),
+          content: Text('DMの開始に失敗しました: $e'), // 👈 'permission-denied' が表示される
           backgroundColor: Colors.red,
         ),
       );

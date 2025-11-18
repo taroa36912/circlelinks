@@ -12,7 +12,7 @@ class MyPageScreen extends ConsumerStatefulWidget {
 class _MyPageScreenState extends ConsumerState<MyPageScreen> {
   CircleModel? _myCircleData;
   bool _isLoading = true;
-  String _appVersion = '1.0.0'; // ダミーバージョン
+  final String _appVersion = '1.0.0'; // ダミーバージョン
 
   @override
   void initState() {

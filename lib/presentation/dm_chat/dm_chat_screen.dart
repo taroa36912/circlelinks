@@ -1,15 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:sizer/sizer.dart';
-import '../../core/app_export.dart'; // app_export.dart (RiverpodとServiceを含む)
+import '../../core/app_export.dart'; 
 
 class DmChatScreen extends ConsumerStatefulWidget {
   final String dmChannelId;
-  final String recipientName; // 相手（サークルまたは個人）の名前
+  final String recipientName;
+  // ⬇️ 追加: サークル管理者として参加しているかどうか
+  final bool isCircleAdmin;
 
   const DmChatScreen({
     super.key,
     required this.dmChannelId,
     required this.recipientName,
+    this.isCircleAdmin = false, // デフォルトは個人 (false)
   });
 
   @override
@@ -20,7 +23,7 @@ class _DmChatScreenState extends ConsumerState<DmChatScreen> {
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   String? _currentUserId;
-  String _currentUserName = '...'; // 自分の表示名
+  String _currentUserName = '...'; // 送信者名
 
   @override
   void initState() {
@@ -32,17 +35,23 @@ class _DmChatScreenState extends ConsumerState<DmChatScreen> {
     final authService = ref.read(firebaseAuthServiceProvider);
     final user = authService.currentUser;
     if (user != null) {
-      // ログインユーザー（個人またはサークル管理者）の情報を取得
       _currentUserId = user.uid;
       
-      // 自分のサークル情報を取得試行（自分がサークル側の場合）
-      final firestoreService = ref.read(firestoreServiceProvider);
-      final myCircle = await firestoreService.getCircle(user.uid);
-      
-      setState(() {
-        // サークル情報があればサークル名、なければメールアドレス（の@前など）を使う
-        _currentUserName = myCircle?.circleName ?? user.email?.split('@').first ?? 'ユーザー';
-      });
+      // ⬇️ --- 修正: 名前決定ロジック --- ⬇️
+      if (widget.isCircleAdmin) {
+        // サークル管理者として発言する場合 -> 自分のサークル名を取得
+        final firestoreService = ref.read(firestoreServiceProvider);
+        final myCircle = await firestoreService.getCircle(user.uid);
+        setState(() {
+          _currentUserName = myCircle?.circleName ?? 'サークル管理者';
+        });
+      } else {
+        // 個人として発言する場合 -> Authの表示名 or メール
+        setState(() {
+          _currentUserName = user.displayName ?? user.email?.split('@').first ?? 'ユーザー';
+        });
+      }
+      // ⬆️ --- 修正ここまで --- ⬆️
     }
   }
 
@@ -92,10 +101,9 @@ class _DmChatScreenState extends ConsumerState<DmChatScreen> {
         final messages = snapshot.data ?? [];
 
         if (messages.isEmpty) {
-          return Center(child: Text('メッセージを送信してDMを開始しましょう。'));
+          return const Center(child: Text('メッセージを送信してDMを開始しましょう。'));
         }
         
-        // ... (ListView.builder とスクロール処理 - chat.dart と同様) ...
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (_scrollController.hasClients) {
             _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
@@ -108,8 +116,8 @@ class _DmChatScreenState extends ConsumerState<DmChatScreen> {
           itemCount: messages.length,
           itemBuilder: (context, index) {
             final message = messages[index];
+            // 自分が送信したメッセージかどうか
             final isOwnMessage = message.senderId == _currentUserId;
-            // (chat.dart の _buildMessageBubble と同様の実装)
             return _buildMessageBubble(message, isOwnMessage);
           },
         );
@@ -117,10 +125,7 @@ class _DmChatScreenState extends ConsumerState<DmChatScreen> {
     );
   }
   
-  // (chat.dart から _buildMessageBubble をコピー＆ペーストし、
-  //  MessageModel の代わりに DmMessageModel を使うように修正)
   Widget _buildMessageBubble(DmMessageModel message, bool isOwnMessage) {
-    // ... (chat.dart の _buildMessageBubble とほぼ同じレイアウト) ...
      return Container(
       margin: EdgeInsets.only(bottom: 2.h),
       child: Row(
@@ -136,13 +141,29 @@ class _DmChatScreenState extends ConsumerState<DmChatScreen> {
                     : Theme.of(context).colorScheme.surfaceContainerHighest,
                 borderRadius: BorderRadius.circular(16),
               ),
-              child: Text(
-                message.message,
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: isOwnMessage
-                          ? Colors.white
-                          : Theme.of(context).colorScheme.onSurface,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // 相手からのメッセージの場合、名前を表示しても良い
+                  if (!isOwnMessage) ...[
+                    Text(
+                      message.senderName,
+                      style: TextStyle(
+                        fontSize: 10, 
+                        color: Theme.of(context).colorScheme.onSurfaceVariant
+                      ),
                     ),
+                    SizedBox(height: 4),
+                  ],
+                  Text(
+                    message.message,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: isOwnMessage
+                              ? Colors.white
+                              : Theme.of(context).colorScheme.onSurface,
+                        ),
+                  ),
+                ],
               ),
             ),
           ),
@@ -152,7 +173,6 @@ class _DmChatScreenState extends ConsumerState<DmChatScreen> {
   }
 
   Widget _buildMessageInput() {
-    // ... (chat.dart の _buildMessageInput と同様の実装) ...
     return Container(
       padding: EdgeInsets.all(4.w),
       decoration: BoxDecoration(
@@ -189,10 +209,11 @@ class _DmChatScreenState extends ConsumerState<DmChatScreen> {
 
     final firestoreService = ref.read(firestoreServiceProvider);
 
+    // ⬇️ メッセージ送信時に _currentUserName (役割に応じた名前) を使用
     final message = DmMessageModel(
-      id: '', // Firestoreが設定
+      id: '', 
       senderId: _currentUserId!,
-      senderName: _currentUserName, // 自分の表示名
+      senderName: _currentUserName, 
       message: messageText,
       timestamp: DateTime.now(),
     );

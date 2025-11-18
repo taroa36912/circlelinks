@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+// DateFormat用
 import '../../core/app_export.dart';
 
+// ⬇️ クラス名を DmListScreen に修正 ⬇️
 class DmListScreen extends ConsumerStatefulWidget {
   const DmListScreen({super.key});
 
@@ -48,14 +50,13 @@ class _DmListScreenState extends ConsumerState<DmListScreen> {
     final firestoreService = ref.read(firestoreServiceProvider);
 
     return StreamBuilder<List<DmChannelModel>>(
-      // 👈 新しく作った getDmChannelsForIndividual を呼び出す
+      // ⬇️ 個人用のメソッド (getDmChannelsForIndividual) を使用 ⬇️
       stream: firestoreService.getDmChannelsForIndividual(_currentUserId!), 
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
         }
         if (snapshot.hasError) {
-          // Firestoreルールが正しく適用されていれば、ここは通らないはず
           return Center(child: Text('エラー: ${snapshot.error}')); 
         }
         final channels = snapshot.data ?? [];
@@ -77,12 +78,12 @@ class _DmListScreenState extends ConsumerState<DmListScreen> {
             final channel = channels[index];
             return ListTile(
               leading: CircleAvatar(
-                // サークルのアバター (channel.circleAvatarUrl)
+                // サークルのアバター
                 backgroundImage: (channel.circleAvatarUrl != null)
                   ? NetworkImage(channel.circleAvatarUrl!)
                   : null,
                 child: (channel.circleAvatarUrl == null) 
-                  ? Icon(Icons.group) 
+                  ? const Icon(Icons.group) 
                   : null,
               ),
               title: Text(

@@ -14,12 +14,10 @@ class _CircleProfileState extends ConsumerState<CircleProfile>
     with TickerProviderStateMixin {
   late TabController _tabController;
   bool _isLoading = false;
-  // bool _isRequestSent = false; 
   CircleModel? _circle;
   String? _circleId;
   bool _didLoadData = false;
   
-  CircleModel? _currentUserCircle; 
   User? _currentUser;
   bool _isOwner = false; 
 
@@ -61,11 +59,8 @@ class _CircleProfileState extends ConsumerState<CircleProfile>
     }
 
     final firestoreService = ref.read(firestoreServiceProvider);
-    try {
-      _currentUserCircle = await firestoreService.getCircle(_currentUser!.uid);
-    } catch (e) {
-      print("DM送信者情報の取得に失敗 (サークル未登録の個人ユーザー): $e");
-    }
+    
+    // 自分のサークル情報の取得処理は削除しました
 
     await _fetchCircle(firestoreService);
   }
@@ -217,10 +212,7 @@ class _CircleProfileState extends ConsumerState<CircleProfile>
               child: TabBarView(
                 controller: _tabController,
                 children: [
-                  // About Tab
                   _buildAboutTab(),
-
-                  // Contact Tab
                   _buildContactTab(),
                 ],
               ),
@@ -228,10 +220,10 @@ class _CircleProfileState extends ConsumerState<CircleProfile>
           ],
         ),
       ),
-      floatingActionButton: _isOwner
+      floatingActionButton: _isOwner // 自分のプロフィールならFABは表示しない
           ? null 
           : FloatingActionButton.extended(
-              onPressed: _handleSendDm,
+              onPressed: _handleSendDm, 
               label: const Text('DMを送信'),
               icon: const Icon(Icons.message_outlined),
             ),
@@ -358,19 +350,15 @@ class _CircleProfileState extends ConsumerState<CircleProfile>
   }
 
   Future<void> _handleSendDm() async {
-    if (_currentUser == null) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('デバッグエラー: ユーザーが null です'), backgroundColor: Colors.red,));
-      return;
-    }
-    if (_circle == null) {
-      return;
-    }
-    
-    // 自分のサークル情報（_currentUserCircle）は _loadData で取得済み
-    final String individualName = _currentUserCircle?.circleName ?? 
-                                _currentUser!.displayName ?? 
+    if (_currentUser == null || _circle == null) return;
+
+    // 個人としての情報を設定
+    // UserModelは未実装のため、Auth情報から名前を生成
+    final String individualName = _currentUser!.displayName ?? 
                                 _currentUser!.email?.split('@').first ?? 
                                 'ゲストユーザー';
+    
+    final String? individualAvatarUrl = _currentUser!.photoURL;
 
     final String circleId = _circle!.id;
     final String circleName = _circle!.circleName;
@@ -385,6 +373,7 @@ class _CircleProfileState extends ConsumerState<CircleProfile>
         individualName: individualName,
         circleName: circleName,
         circleAvatarUrl: circleAvatarUrl,
+        individualAvatarUrl: individualAvatarUrl,
       );
       
       if (mounted) {
@@ -393,15 +382,16 @@ class _CircleProfileState extends ConsumerState<CircleProfile>
           AppRoutes.dmChat,
           arguments: {
             'dmChannelId': channelId,
-            'recipientName': circleName, 
+            'recipientName': circleName,
+            // 'isCircleAdmin': false, // この引数は DmChatScreen が対応していない場合は不要
           },
         );
       }
 
-    } catch (e) {      
+    } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('DMの開始に失敗しました: $e'), // 👈 'permission-denied' が表示される
+          content: Text('DMの開始に失敗しました: $e'),
           backgroundColor: Colors.red,
         ),
       );

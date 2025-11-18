@@ -1,45 +1,30 @@
 import 'package:flutter/material.dart';
-import '../../core/app_export.dart'; // app_export.dart (RiverpodとServiceを含む)
+import '../../core/app_export.dart';
+// DateFormat用
 
-class CircleAdminScreen extends ConsumerStatefulWidget {
-  const CircleAdminScreen({super.key});
+class CircleDmListScreen extends ConsumerStatefulWidget {
+  final String circleId; // 👈 引数でサークルIDを受け取る
+
+  const CircleDmListScreen({
+    super.key,
+    required this.circleId,
+  });
 
   @override
-  ConsumerState<CircleAdminScreen> createState() => _CircleAdminScreenState();
+  ConsumerState<CircleDmListScreen> createState() => _CircleDmListScreenState();
 }
 
-class _CircleAdminScreenState extends ConsumerState<CircleAdminScreen> {
-  String? _currentCircleId;
-  
-  @override
-  void initState() {
-    super.initState();
-    _currentCircleId = ref.read(firebaseAuthServiceProvider).currentUser?.uid;
-  }
+class _CircleDmListScreenState extends ConsumerState<CircleDmListScreen> {
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-
-    if (_currentCircleId == null) {
-      // ログインしていないか、サークルID（Auth UID）が取得できない
-      return Scaffold(
-        appBar: AppBar(title: const Text('サークル管理')),
-        body: const Center(child: Text('管理者情報が見つかりません。')),
-      );
-    }
     
     return Scaffold(
       appBar: AppBar(
-        title: Text(
-          'サークル管理',
-          style: theme.textTheme.titleLarge?.copyWith(
-            fontWeight: FontWeight.w600,
-          ),
-        ),
+        title: const Text('受信したDM一覧'),
         backgroundColor: theme.colorScheme.surface,
         elevation: 0,
-        // TODO: ここにタブ（DM, イベント管理, メンバー管理など）を追加できる
       ),
       body: _buildDmList(theme),
     );
@@ -50,7 +35,8 @@ class _CircleAdminScreenState extends ConsumerState<CircleAdminScreen> {
     final firestoreService = ref.read(firestoreServiceProvider);
 
     return StreamBuilder<List<DmChannelModel>>(
-      stream: firestoreService.getDmChannelsForCircle(_currentCircleId!),
+      // 👈 受け取った widget.circleId を使用
+      stream: firestoreService.getDmChannelsForCircle(widget.circleId), 
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
@@ -76,12 +62,11 @@ class _CircleAdminScreenState extends ConsumerState<CircleAdminScreen> {
           itemBuilder: (context, index) {
             final channel = channels[index];
             return ListTile(
-              leading: CircleAvatar(
-                // TODO: 個人のアバター (channel.individualAvatarUrl)
+              leading: const CircleAvatar(
                 child: Icon(Icons.person),
               ),
               title: Text(
-                channel.individualName, // DM相手（個人）の名前
+                channel.individualName,
                 style: theme.textTheme.titleMedium?.copyWith(
                   fontWeight: FontWeight.w600,
                 ),
@@ -96,7 +81,6 @@ class _CircleAdminScreenState extends ConsumerState<CircleAdminScreen> {
                 style: theme.textTheme.bodySmall,
               ),
               onTap: () {
-                // DMチャット画面に遷移
                 Navigator.pushNamed(
                   context,
                   AppRoutes.dmChat,

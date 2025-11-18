@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:sizer/sizer.dart';
-import '../../core/app_export.dart'; // app_export.dart (RiverpodとServiceを含む)
+import '../../core/app_export.dart'; 
+import '../../core/models/user_model.dart'; // 👈 追加
 
 class MyPageScreen extends ConsumerStatefulWidget {
   const MyPageScreen({super.key});
@@ -11,59 +12,51 @@ class MyPageScreen extends ConsumerStatefulWidget {
 
 class _MyPageScreenState extends ConsumerState<MyPageScreen> {
   CircleModel? _myCircleData;
+  UserModel? _myUserData; // 👈 追加: ユーザー情報
   bool _isLoading = true;
-  final String _appVersion = '1.0.0'; // ダミーバージョン
+  final String _appVersion = '1.0.0';
 
   @override
   void initState() {
     super.initState();
-    _loadMyData();
-    _getAppVersion();
+    _loadData();
   }
 
-  // アプリのバージョンを取得 (ダミー)
-  // TODO: package_info_plus などを導入して動的に取得する
-  void _getAppVersion() {
-    // このデモでは固定値を表示
-    // (PackageInfo.fromPlatform()).then((PackageInfo packageInfo) {
-    //   setState(() {
-    //     _appVersion = packageInfo.version;
-    //   });
-    // });
-  }
-
-  // 自分のサークル情報をロード
-  Future<void> _loadMyData() async {
+  Future<void> _loadData() async {
     setState(() { _isLoading = true; });
     
     final authService = ref.read(firebaseAuthServiceProvider);
     final user = authService.currentUser;
     if (user == null) {
       setState(() { _isLoading = false; });
-      Navigator.of(context).pushNamedAndRemoveUntil('/login-screen', (route) => false);
+      Navigator.of(context).pushNamedAndRemoveUntil(AppRoutes.login, (route) => false);
       return;
     }
 
     try {
       final firestoreService = ref.read(firestoreServiceProvider);
-      final circle = await firestoreService.getCircle(user.uid);
+      
+      // 1. ユーザー情報を取得
+      final userData = await firestoreService.getUser(user.uid);
+      // 2. サークル情報を取得 (存在しない場合は null になる)
+      final circleData = await firestoreService.getCircle(user.uid);
+
       if (mounted) {
         setState(() {
-          _myCircleData = circle;
+          _myUserData = userData;
+          _myCircleData = circleData;
           _isLoading = false;
         });
       }
     } catch (e) {
       if (mounted) {
         setState(() { _isLoading = false; });
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('自分のサークル情報の取得に失敗しました: $e')),
-        );
+        // サークルがないのは正常な場合もあるので、エラー表示は控えめに
+        print("MyPage: データ取得エラー $e");
       }
     }
   }
 
-  // ログアウト処理
   Future<void> _handleLogout() async {
     final authService = ref.read(firebaseAuthServiceProvider);
     try {
@@ -82,7 +75,6 @@ class _MyPageScreenState extends ConsumerState<MyPageScreen> {
     }
   }
 
-  // TODO: 未実装機能用のダミーSnackBar
   void _showComingSoonSnackBar() {
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
@@ -107,52 +99,89 @@ class _MyPageScreenState extends ConsumerState<MyPageScreen> {
         backgroundColor: theme.colorScheme.surface,
         elevation: 0,
       ),
-      backgroundColor: theme.colorScheme.surfaceContainerLowest, // 背景色を少し変更
+      backgroundColor: theme.colorScheme.surfaceContainerLowest,
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
-          : _myCircleData == null
-              ? _buildErrorState()
-              : _buildMenu(theme),
+          : _buildMenu(theme), // 👈 エラー画面ではなく、常にメニューを表示
     );
   }
 
   Widget _buildMenu(ThemeData theme) {
+    // サークル作成済みかどうか
+    final bool hasCircle = _myCircleData != null;
+
     return ListView(
       children: [
-        // --- 1. プロフィール設定 ---
+        // --- 1. プロフィールヘッダー ---
         _buildProfileHeader(theme),
         
-        // --- 2. サークル機能 ---
-        _buildMenuSection(theme, "サークル活動"),
+        // --- 2. サークル機能 (分岐) ---
+        if (hasCircle) ...[
+           // ✅ サークル作成済みの場合
+          _buildMenuSection(theme, "サークル活動"),
+          _buildMenuItem(
+            theme,
+            icon: Icons.admin_panel_settings_outlined, // 管理アイコン
+            title: "サークル管理",
+            subtitle: "サークル情報の編集・DM確認",
+            onTap: () {
+              Navigator.pushNamed(context, AppRoutes.myCirclesList);
+            },
+          ),
+          _buildMenuItem(
+            theme,
+            icon: Icons.group_outlined,
+            title: "所属サークル一覧", // 将来的に複数サークル対応
+            onTap: _showComingSoonSnackBar,
+          ),
+        ] else ...[
+           // ❌ サークル未作成の場合
+          _buildMenuSection(theme, "サークル"),
+          _buildMenuItem(
+            theme,
+            icon: Icons.add_business_outlined,
+            title: "サークルを登録する",
+            subtitle: "新しいサークルを作成・管理します",
+            onTap: () {
+              Navigator.pushNamed(context, AppRoutes.circleRegistration);
+            },
+          ),
+        ],
+
+        // --- 共通メニュー ---
         _buildMenuItem(
           theme,
-          icon: Icons.group_outlined, // 'group' アイコンに変更
-          title: "加入サークル一覧",
-          subtitle: "あなたが所属・管理するサークル",
+          icon: Icons.work_outline,
+          title: "Myポートフォリオ",
           onTap: () {
-            // TODO: '/my-circles' ページを新規作成し、AppRoutesに追加する
-            _showComingSoonSnackBar(); 
-            // Navigator.pushNamed(context, '/my-circles'); 
+             Navigator.pushNamed(context, AppRoutes.portfolioBuilder); 
           },
         ),
-        _buildMenuItem(
+         _buildMenuItem(
           theme,
-          icon: Icons.work_outline, // 'work' アイコンに変更
-          title: "Myポートフォリオ",
-          subtitle: "あなたの活動実績を編集・確認",
+          icon: Icons.people_outline,
+          title: "コネクション管理", // ここに追加
           onTap: () {
-            // portfolio_builder.dart へのルート
-            Navigator.pushNamed(context, AppRoutes.portfolioBuilder); 
+             Navigator.pushNamed(context, AppRoutes.connections); 
           },
         ),
 
-        // --- 3. アプリ設定 ---
-        _buildMenuSection(theme, "設定"),
+        // --- 3. 設定 ---
+        _buildMenuSection(theme, "アカウントと設定"),
         _buildMenuItem(
           theme,
-          icon: Icons.notifications_outlined, // 'notifications' アイコンに変更
+          icon: Icons.account_circle_outlined,
+          title: "プロフィール設定", // 👈 ここでユーザー名などを変更
+          subtitle: "ユーザー名・メールアドレスの変更",
+          onTap: () {
+             // TODO: プロフィール編集画面へ
+             _showComingSoonSnackBar(); 
+          },
+        ),
+        _buildMenuItem(
+          theme,
+          icon: Icons.notifications_outlined,
           title: "通知設定",
-          subtitle: "イベントやチャットの通知",
           onTap: _showComingSoonSnackBar,
         ),
 
@@ -160,42 +189,52 @@ class _MyPageScreenState extends ConsumerState<MyPageScreen> {
         _buildMenuSection(theme, "サポート"),
         _buildMenuItem(
           theme,
-          icon: Icons.help_outline, // 'help' アイコンに変更
+          icon: Icons.help_outline,
           title: "ヘルプ & サポート",
-          subtitle: "使い方やFAQ",
           onTap: _showComingSoonSnackBar,
         ),
         _buildMenuItem(
           theme,
-          icon: Icons.privacy_tip_outlined, // 'privacy' アイコンに変更
+          icon: Icons.privacy_tip_outlined,
           title: "プライバシーポリシー",
-          subtitle: "個人情報の取り扱いについて",
           onTap: _showComingSoonSnackBar,
         ),
 
         // --- 5. アカウント操作 ---
-        _buildMenuSection(theme, "アカウント"),
+        _buildMenuSection(theme, ""),
         _buildMenuItem(
           theme,
           icon: Icons.logout,
           title: "ログアウト",
-          isDestructive: true, // 赤色にする
+          isDestructive: true,
           onTap: _handleLogout,
         ),
 
-        // --- アプリバージョン ---
         _buildAppVersion(theme),
+        SizedBox(height: 4.h),
       ],
     );
   }
 
-  // 1. プロフィール設定 (ヘッダー)
+  // プロフィールヘッダー
   Widget _buildProfileHeader(ThemeData theme) {
+    final authService = ref.read(firebaseAuthServiceProvider);
+    final currentUser = authService.currentUser;
+
+    // 表示優先順位: UserModel > CircleModel > Auth情報
+    final String displayName = _myUserData?.userName ?? 
+                               _myCircleData?.circleName ?? 
+                               currentUser?.displayName ?? 
+                               currentUser?.email?.split('@').first ?? 
+                               'ゲスト';
+                               
+    final String email = currentUser?.email ?? '';
+    final String? imageUrl = _myUserData?.profileImageUrl ?? _myCircleData?.profileImageUrl;
+
     return InkWell(
       onTap: () {
-        // TODO: '/profile-settings' ページを新規作成し、AppRoutesに追加する
-        _showComingSoonSnackBar();
-        // Navigator.pushNamed(context, '/profile-settings');
+         // プロフィール編集へ
+         _showComingSoonSnackBar();
       },
       child: Container(
         width: double.infinity,
@@ -206,10 +245,8 @@ class _MyPageScreenState extends ConsumerState<MyPageScreen> {
             CircleAvatar(
               radius: 8.w,
               backgroundColor: theme.colorScheme.outline.withOpacity(0.3),
-              backgroundImage: _myCircleData!.profileImageUrl != null
-                  ? NetworkImage(_myCircleData!.profileImageUrl!)
-                  : null,
-              child: _myCircleData!.profileImageUrl == null
+              backgroundImage: imageUrl != null ? NetworkImage(imageUrl) : null,
+              child: imageUrl == null
                   ? Icon(Icons.person, size: 8.w, color: Colors.grey)
                   : null,
             ),
@@ -219,22 +256,24 @@ class _MyPageScreenState extends ConsumerState<MyPageScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    _myCircleData!.circleName, // ユーザー名/サークル名
+                    displayName,
                     style: theme.textTheme.titleLarge?.copyWith(
                       fontWeight: FontWeight.bold,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  SizedBox(height: 0.5.h),
-                  Text(
-                    _myCircleData!.email, // メールアドレス
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
+                  if (email.isNotEmpty) ...[
+                    SizedBox(height: 0.5.h),
+                    Text(
+                      email,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
+                  ],
                 ],
               ),
             ),
@@ -245,8 +284,8 @@ class _MyPageScreenState extends ConsumerState<MyPageScreen> {
     );
   }
 
-  // メニューのセクションヘッダー
   Widget _buildMenuSection(ThemeData theme, String title) {
+    if (title.isEmpty) return const SizedBox.shrink();
     return Padding(
       padding: EdgeInsets.fromLTRB(6.w, 3.h, 6.w, 1.h),
       child: Text(
@@ -259,7 +298,6 @@ class _MyPageScreenState extends ConsumerState<MyPageScreen> {
     );
   }
 
-  // メニュー項目
   Widget _buildMenuItem(ThemeData theme, {
     required IconData icon,
     required String title,
@@ -295,46 +333,14 @@ class _MyPageScreenState extends ConsumerState<MyPageScreen> {
     );
   }
 
-  // アプリバージョン
   Widget _buildAppVersion(ThemeData theme) {
     return Container(
-      padding: EdgeInsets.symmetric(vertical: 4.h),
+      padding: EdgeInsets.symmetric(vertical: 2.h),
       alignment: Alignment.center,
       child: Text(
         'App Version: $_appVersion',
         style: theme.textTheme.bodySmall?.copyWith(
           color: theme.colorScheme.onSurfaceVariant,
-        ),
-      ),
-    );
-  }
-
-  // エラー表示
-  Widget _buildErrorState() {
-    return Center(
-      child: Padding(
-        padding: EdgeInsets.all(8.w),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.error_outline, color: Colors.red, size: 60),
-            SizedBox(height: 2.h),
-            const Text(
-              'サークル情報が見つかりません',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              textAlign: TextAlign.center,
-            ),
-            SizedBox(height: 1.h),
-            const Text(
-              'このアカウントに紐づくサークル情報が登録されていないようです。',
-              textAlign: TextAlign.center,
-            ),
-            SizedBox(height: 3.h),
-            ElevatedButton(
-              onPressed: _handleLogout,
-              child: const Text('ログアウトしてやり直す'),
-            ),
-          ],
         ),
       ),
     );

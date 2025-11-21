@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:sizer/sizer.dart';
 import '../../core/app_export.dart';
-// DateFormat用
+import 'package:intl/intl.dart';
 
 class CircleDmListScreen extends ConsumerStatefulWidget {
-  final String circleId; // 👈 引数でサークルIDを受け取る
+  final String circleId; 
 
   const CircleDmListScreen({
     super.key,
@@ -30,12 +31,11 @@ class _CircleDmListScreenState extends ConsumerState<CircleDmListScreen> {
     );
   }
 
-  // サークルが受信したDMの一覧
+  // サークルが受信したDMの一覧 (相手は個人)
   Widget _buildDmList(ThemeData theme) {
     final firestoreService = ref.read(firestoreServiceProvider);
 
     return StreamBuilder<List<DmChannelModel>>(
-      // 👈 受け取った widget.circleId を使用
       stream: firestoreService.getDmChannelsForCircle(widget.circleId), 
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
@@ -62,11 +62,18 @@ class _CircleDmListScreenState extends ConsumerState<CircleDmListScreen> {
           itemBuilder: (context, index) {
             final channel = channels[index];
             return ListTile(
-              leading: const CircleAvatar(
-                child: Icon(Icons.person),
+              leading: CircleAvatar(
+                // 個人のアバター (実装済みなら)
+                backgroundImage: (channel.individualAvatarUrl != null)
+                  ? NetworkImage(channel.individualAvatarUrl!)
+                  : null,
+                child: (channel.individualAvatarUrl == null)
+                  ? const Icon(Icons.person)
+                  : null,
               ),
+              // ⬇️ サークル管理画面なので、相手(個人)の名前を表示 ⬇️
               title: Text(
-                channel.individualName,
+                channel.individualName, 
                 style: theme.textTheme.titleMedium?.copyWith(
                   fontWeight: FontWeight.w600,
                 ),
@@ -86,7 +93,7 @@ class _CircleDmListScreenState extends ConsumerState<CircleDmListScreen> {
                   AppRoutes.dmChat,
                   arguments: {
                     'dmChannelId': channel.id,
-                    'recipientName': channel.individualName,
+                    'recipientName': channel.individualName, // 相手は個人
                   },
                 );
               },

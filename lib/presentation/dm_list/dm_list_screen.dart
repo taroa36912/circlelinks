@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-// DateFormat用
+import 'package:sizer/sizer.dart';
+import 'package:intl/intl.dart'; 
 import '../../core/app_export.dart';
 
-// ⬇️ クラス名を DmListScreen に修正 ⬇️
 class DmListScreen extends ConsumerStatefulWidget {
   const DmListScreen({super.key});
 
@@ -33,7 +33,7 @@ class _DmListScreenState extends ConsumerState<DmListScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          'DM一覧',
+          'DM一覧 (個人)',
           style: theme.textTheme.titleLarge?.copyWith(
             fontWeight: FontWeight.w600,
           ),
@@ -45,12 +45,11 @@ class _DmListScreenState extends ConsumerState<DmListScreen> {
     );
   }
 
-  // 自分が個人として送受信したDMの一覧
+  // 個人として送受信したDMの一覧 (相手はサークル)
   Widget _buildDmList(ThemeData theme) {
     final firestoreService = ref.read(firestoreServiceProvider);
 
     return StreamBuilder<List<DmChannelModel>>(
-      // ⬇️ 個人用のメソッド (getDmChannelsForIndividual) を使用 ⬇️
       stream: firestoreService.getDmChannelsForIndividual(_currentUserId!), 
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
@@ -78,7 +77,6 @@ class _DmListScreenState extends ConsumerState<DmListScreen> {
             final channel = channels[index];
             return ListTile(
               leading: CircleAvatar(
-                // サークルのアバター
                 backgroundImage: (channel.circleAvatarUrl != null)
                   ? NetworkImage(channel.circleAvatarUrl!)
                   : null,
@@ -86,8 +84,9 @@ class _DmListScreenState extends ConsumerState<DmListScreen> {
                   ? const Icon(Icons.group) 
                   : null,
               ),
+              // ⬇️ 個人用画面なので、相手(サークル)の名前を表示 ⬇️
               title: Text(
-                channel.circleName, // DM相手（サークル）の名前
+                channel.circleName, 
                 style: theme.textTheme.titleMedium?.copyWith(
                   fontWeight: FontWeight.w600,
                 ),
@@ -102,13 +101,12 @@ class _DmListScreenState extends ConsumerState<DmListScreen> {
                 style: theme.textTheme.bodySmall,
               ),
               onTap: () {
-                // DMチャット画面に遷移
                 Navigator.pushNamed(
                   context,
                   AppRoutes.dmChat,
                   arguments: {
                     'dmChannelId': channel.id,
-                    'recipientName': channel.circleName, // 相手（サークル）の名前
+                    'recipientName': channel.circleName, // 相手はサークル
                   },
                 );
               },

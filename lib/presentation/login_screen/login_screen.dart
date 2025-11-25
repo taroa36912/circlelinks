@@ -1,3 +1,4 @@
+// lib/presentation/login_screen/login_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:sizer/sizer.dart';
@@ -84,9 +85,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
   }
 
   Future<void> _handleLogin(String email, String password) async {
-    setState(() {
-      _isLoading = true;
-    });
+    FocusScope.of(context).unfocus(); 
+
+    setState(() { _isLoading = true; });
 
     try {
       final authService = ref.read(firebaseAuthServiceProvider);
@@ -94,19 +95,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
         email: email,
         password: password,
       );
-
-      // Provide haptic feedback for successful login
       HapticFeedback.lightImpact();
-
-      // Navigate to home screen
       if (mounted) {
-        Navigator.pushReplacementNamed(context, '/circle-discovery');
+        setState(() { _isLoading = false; });
+        Navigator.pushReplacementNamed(context, AppRoutes.circleDiscovery); // 修正
       }
     } catch (e) {
-      setState(() {
-        _isLoading = false;
-      });
-
+      setState(() { _isLoading = false; });
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -123,37 +118,33 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
           ),
         );
       }
+    } finally {
+      if (mounted && _isLoading) {
+        setState(() { _isLoading = false; });
+      }
     }
   }
 
   Future<void> _handleGoogleLogin() async {
-    setState(() {
-      _isLoading = true;
-    });
+    FocusScope.of(context).unfocus(); 
+
+    setState(() { _isLoading = true; });
 
     try {
       final authService = ref.read(firebaseAuthServiceProvider);
       final userCredential = await authService.signInWithGoogle();
 
       if (userCredential != null) {
-        // Provide haptic feedback for successful login
         HapticFeedback.lightImpact();
-
-        // Navigate to home screen
         if (mounted) {
-          Navigator.pushReplacementNamed(context, '/circle-discovery');
+           setState(() { _isLoading = false; });
+           Navigator.pushReplacementNamed(context, AppRoutes.circleDiscovery); // 修正
         }
       } else {
-        // User cancelled Google sign-in
-        setState(() {
-          _isLoading = false;
-        });
+        setState(() { _isLoading = false; });
       }
     } catch (e) {
-      setState(() {
-        _isLoading = false;
-      });
-
+      setState(() { _isLoading = false; });
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -170,20 +161,68 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
           ),
         );
       }
+    } finally {
+       if (mounted && _isLoading) {
+         setState(() { _isLoading = false; });
+       }
+    }
+  }
+
+  Future<void> _handleLineLogin() async {
+    FocusScope.of(context).unfocus(); 
+
+    setState(() { _isLoading = true; });
+    
+    try {
+      final authService = ref.read(firebaseAuthServiceProvider);
+      final userCredential = await authService.signInWithLine(); 
+
+      if (userCredential != null) {
+        HapticFeedback.lightImpact(); 
+        if (mounted) {
+          setState(() { _isLoading = false; });
+          Navigator.pushReplacementNamed(context, AppRoutes.circleDiscovery); // 修正
+        }
+      } else {
+        setState(() { _isLoading = false; });
+      }
+    } catch (e) {
+      setState(() { _isLoading = false; });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('LINEログインに失敗しました: $e'),
+            backgroundColor: AppTheme.lightTheme.colorScheme.error,
+             action: SnackBarAction(
+               label: '閉じる',
+               textColor: Colors.white,
+               onPressed: () {
+                 ScaffoldMessenger.of(context).hideCurrentSnackBar();
+               },
+             ),
+          ),
+        );
+      }
+    } finally {
+       if (mounted && _isLoading) {
+         setState(() { _isLoading = false; });
+       }
     }
   }
 
   void _handleBiometricSuccess() {
     HapticFeedback.heavyImpact();
-    Navigator.pushReplacementNamed(context, '/circle-discovery');
+    Navigator.pushReplacementNamed(context, AppRoutes.circleDiscovery); // 修正
   }
 
   void _skipBiometric() {
-    Navigator.pushReplacementNamed(context, '/circle-discovery');
+    Navigator.pushReplacementNamed(context, AppRoutes.circleDiscovery); // 修正
   }
 
   void _navigateToSignUp() {
-    Navigator.pushNamed(context, '/circle-registration');
+    // ⬇️ --- 修正 --- ⬇️
+    Navigator.pushNamed(context, AppRoutes.signup); // '/circle-registration' から '/signup' へ
+    // ⬆️ --- 修正 --- ⬆️
   }
 
   @override
@@ -193,7 +232,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
       body: SafeArea(
         child: Stack(
           children: [
-            // Main Login Content
             SingleChildScrollView(
               physics: const BouncingScrollPhysics(),
               child: ConstrainedBox(
@@ -289,7 +327,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                               opacity: _formOpacityAnimation,
                               child: LoginFormWidget(
                                 onLogin: _handleLogin,
-                                // onGoogleLogin: _handleGoogleLogin,
                                 isLoading: _isLoading,
                               ),
                             ),
@@ -307,7 +344,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                             position: _formSlideAnimation,
                             child: FadeTransition(
                               opacity: _formOpacityAnimation,
-                              child: SocialLoginWidget(onGoogleLogin: _handleGoogleLogin),
+                              child: SocialLoginWidget(
+                                onGoogleLogin: _handleGoogleLogin,
+                                onLineLogin: _handleLineLogin, 
+                              ),
                             ),
                           );
                         },
@@ -334,7 +374,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                                   ),
                                 ),
                                 GestureDetector(
-                                  onTap: _navigateToSignUp,
+                                  onTap: _navigateToSignUp, // 修正済み
                                   child: Text(
                                     'サインアップ',
                                     style: AppTheme
@@ -363,7 +403,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
             // Biometric Prompt Overlay
             if (_showBiometricPrompt)
               Container(
-                color: Colors.black.withValues(alpha: 0.5),
+                color: Colors.black.withOpacity(0.5),
                 child: Center(
                   child: BiometricPromptWidget(
                     onBiometricSuccess: _handleBiometricSuccess,
@@ -371,6 +411,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                   ),
                 ),
               ),
+            
+             // Loading Indicator Overlay
+             if (_isLoading)
+               Container(
+                 color: Colors.black.withOpacity(0.3),
+                 child: const Center(
+                   child: CircularProgressIndicator(),
+                 ),
+               ),
           ],
         ),
       ),

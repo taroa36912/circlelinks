@@ -122,7 +122,6 @@ class _SkillsEndorsementWidgetState extends State<SkillsEndorsementWidget> {
 
   Widget _buildSkillChip(Map<String, dynamic> skill) {
     final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
     final endorsementCount = skill['endorsements'] as int? ?? 0;
     final category = skill['category'] as String? ?? 'Technical';
     final categoryColor = _getCategoryColor(category);

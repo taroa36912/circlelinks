@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:sizer/sizer.dart';
+import 'package:flutter_line_sdk/flutter_line_sdk.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 
 import '../core/app_export.dart';
 import '../widgets/custom_error_widget.dart';
@@ -13,6 +15,15 @@ void main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+
+  
+  if (!kIsWeb) { 
+    try {
+      await LineSDK.instance.setup("2008357841"); 
+    } catch (e) {
+      print("LINE SDK setup failed: $e");
+    }
+  }
 
   bool hasShownError = false;
 
@@ -52,16 +63,16 @@ class MyApp extends StatelessWidget {
         theme: AppTheme.lightTheme,
         darkTheme: AppTheme.darkTheme,
         themeMode: ThemeMode.light,
-        // 🚨 CRITICAL: NEVER REMOVE OR MODIFY
         builder: (context, child) {
+          if (child == null) return const SizedBox.shrink();
+
           return MediaQuery(
             data: MediaQuery.of(context).copyWith(
-              textScaler: TextScaler.linear(1.0),
+              textScaler: const TextScaler.linear(1.0),
             ),
-            child: child!,
+            child: child,
           );
         },
-        // 🚨 END CRITICAL SECTION
         debugShowCheckedModeBanner: false,
         routes: AppRoutes.routes,
         initialRoute: AppRoutes.initial,

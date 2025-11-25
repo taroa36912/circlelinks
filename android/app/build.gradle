@@ -10,16 +10,16 @@ plugins {
 
 android {
     namespace = "com.circlelink.app"
-    compileSdk = flutter.compileSdkVersion
+    compileSdk = 36
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_1_8
-        targetCompatibility = JavaVersion.VERSION_1_8
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
 
     kotlinOptions {
-        jvmTarget = JavaVersion.VERSION_1_8
+        jvmTarget = '17' 
     }
 
     defaultConfig {
@@ -32,7 +32,7 @@ android {
         versionCode = flutter.versionCode
         versionName = flutter.versionName
         multiDexEnabled true
-        minSdkVersion 23
+        minSdkVersion 24 // 注意: defaultConfig 内の minSdkVersion は flutter.minSdkVersion で上書きされる可能性があります
     }
 
     buildTypes {
@@ -44,13 +44,4 @@ android {
             signingConfig = signingConfigs.debug
         }
     }
-}
-
-flutter {
-    source '../..'
-}
-
-dependencies {
-    implementation "androidx.multidex:multidex:2.0.1"
-    implementation 'com.google.android.material:material:1.9.0'
 }

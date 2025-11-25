@@ -4,25 +4,16 @@ import 'package:sizer/sizer.dart';
 import '../../../core/app_export.dart';
 
 class SocialLoginWidget extends StatelessWidget {
-  // 1. ログイン処理を実行する関数を受け取る変数を追加
+  // Googleログイン用のコールバック関数
   final Future<void> Function() onGoogleLogin;
-  
+  // 1. LINEログイン用のコールバック関数を追加
+  final Future<void> Function() onLineLogin; 
+
   const SocialLoginWidget({
     super.key,
-    required this.onGoogleLogin, // 2. コンストラクタで必須にする
+    required this.onGoogleLogin, 
+    required this.onLineLogin, // 2. コンストラクタで必須にする
   });
-
-  // 3. このファイル内の不要な _handleSocialLogin スタブは削除
-  /*
-  void _handleSocialLogin(BuildContext context, String provider) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('$providerでのログインは準備中です'),
-        duration: const Duration(seconds: 2),
-      ),
-    );
-  }
-  */
 
   @override
   Widget build(BuildContext context) {
@@ -57,12 +48,11 @@ class SocialLoginWidget extends StatelessWidget {
 
         SizedBox(height: 3.h),
 
-        // University SSO Button
+        // University SSO Button (ダミー処理)
         SizedBox(
           width: double.infinity,
           height: 6.h,
           child: OutlinedButton.icon(
-            // 4. 大学SSOのダミー処理は残しておく
             onPressed: () {
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
@@ -102,16 +92,14 @@ class SocialLoginWidget extends StatelessWidget {
           width: double.infinity,
           height: 6.h,
           child: OutlinedButton.icon(
-            // 5. onPressed を、親から渡された onGoogleLogin に変更
-            onPressed: onGoogleLogin,
+            onPressed: onGoogleLogin, // 親から渡されたGoogleログイン関数
             icon: Container(
               width: 20,
               height: 20,
               decoration: const BoxDecoration(
                 shape: BoxShape.circle,
               ),
-              // CORSエラーを避けるため、ローカルアセットを使う
-              child: Image.asset(
+              child: Image.asset( // ローカルアセットを使用
                 'assets/images/g-logo.png',
                 width: 20,
                 height: 20,
@@ -144,32 +132,12 @@ class SocialLoginWidget extends StatelessWidget {
           width: double.infinity,
           height: 6.h,
           child: OutlinedButton.icon(
-            // 6. LINEのダミー処理は残しておく
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('LINEでのログインは準備中です'),
-                  duration: Duration(seconds: 2),
-                ),
-              );
-            },
-            icon: Container(
+            // 3. onPressed を親から渡された onLineLogin に変更
+            onPressed: onLineLogin, 
+            icon: Image.asset(
+              'assets/images/l-logo.png',
               width: 20,
-              height: 20,
-              decoration: BoxDecoration(
-                color: const Color(0xFF00C300),
-                borderRadius: BorderRadius.circular(4),
-              ),
-              child: const Center(
-                child: Text(
-                  'L',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
+              height: 20,              
             ),
             label: Text(
               'LINEでログイン',

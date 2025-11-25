@@ -14,37 +14,62 @@ class _CircleProfileState extends ConsumerState<CircleProfile>
     with TickerProviderStateMixin {
   late TabController _tabController;
   bool _isLoading = false;
-  bool _isRequestSent = false;
   CircleModel? _circle;
   String? _circleId;
+  bool _didLoadData = false;
+  
+  User? _currentUser;
+  bool _isOwner = false; 
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-    _loadCircleData();
   }
 
-  void _loadCircleData() {
-    final args =
-        ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
-    if (args != null && args['circleId'] != null) {
-      _circleId = args['circleId'] as String;
-      _fetchCircle();
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_didLoadData) { 
+      _loadData(); 
+      _didLoadData = true;
     }
   }
+  
+  void _loadData() async {
+    setState(() { _isLoading = true; });
+    
+    final authService = ref.read(firebaseAuthServiceProvider);
+    _currentUser = authService.currentUser;
+    if (_currentUser == null) {
+      Navigator.pop(context); 
+      return;
+    }
 
-  Future<void> _fetchCircle() async {
+    final args =
+        ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+    if (args == null || args['circleId'] == null) {
+      setState(() { _isLoading = false; });
+      return; 
+    }
+    _circleId = args['circleId'] as String;
+    
+    if (_currentUser!.uid == _circleId) {
+      setState(() { _isOwner = true; });
+    }
+
+    final firestoreService = ref.read(firestoreServiceProvider);
+    
+    // 自分のサークル情報の取得処理は削除しました
+
+    await _fetchCircle(firestoreService);
+  }
+
+  Future<void> _fetchCircle(FirestoreService firestoreService) async {
     if (_circleId == null) return;
-
-    setState(() {
-      _isLoading = true;
-    });
-
+    
     try {
-      final firestoreService = ref.read(firestoreServiceProvider);
       final circle = await firestoreService.getCircle(_circleId!);
-
       if (mounted) {
         setState(() {
           _circle = circle;
@@ -139,7 +164,7 @@ class _CircleProfileState extends ConsumerState<CircleProfile>
                           end: Alignment.bottomCenter,
                           colors: [
                             Colors.transparent,
-                            Colors.black.withValues(alpha: 0.7),
+                            Colors.black.withOpacity(0.7),
                           ],
                         ),
                       ),
@@ -187,10 +212,7 @@ class _CircleProfileState extends ConsumerState<CircleProfile>
               child: TabBarView(
                 controller: _tabController,
                 children: [
-                  // About Tab
                   _buildAboutTab(),
-
-                  // Contact Tab
                   _buildContactTab(),
                 ],
               ),
@@ -198,11 +220,13 @@ class _CircleProfileState extends ConsumerState<CircleProfile>
           ],
         ),
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _isRequestSent ? null : _handleSendConnectionRequest,
-        label: Text(_isRequestSent ? 'リクエスト送信済み' : 'コネクションリクエスト'),
-        icon: Icon(_isRequestSent ? Icons.check : Icons.send),
-      ),
+      floatingActionButton: _isOwner // 自分のプロフィールならFABは表示しない
+          ? null 
+          : FloatingActionButton.extended(
+              onPressed: _handleSendDm, 
+              label: const Text('DMを送信'),
+              icon: const Icon(Icons.message_outlined),
+            ),
     );
   }
 
@@ -219,78 +243,22 @@ class _CircleProfileState extends ConsumerState<CircleProfile>
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    '基本情報',
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.w600,
-                        ),
-                  ),
+                  Text('基本情報', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600,),),
                   SizedBox(height: 2.h),
-                  Row(
-                    children: [
-                      Icon(Icons.school,
-                          color: Theme.of(context).colorScheme.primary),
-                      SizedBox(width: 2.w),
-                      Expanded(
-                        child: Text(
-                          _circle!.universityName,
-                          style: Theme.of(context).textTheme.bodyLarge,
-                        ),
-                      ),
-                    ],
-                  ),
+                  Row(children: [Icon(Icons.school, color: Theme.of(context).colorScheme.primary), SizedBox(width: 2.w), Expanded(child: Text(_circle!.universityName, style: Theme.of(context).textTheme.bodyLarge,),),],),
                   SizedBox(height: 1.h),
-                  Row(
-                    children: [
-                      Icon(Icons.category,
-                          color: Theme.of(context).colorScheme.primary),
-                      SizedBox(width: 2.w),
-                      Expanded(
-                        child: Text(
-                          _circle!.category,
-                          style: Theme.of(context).textTheme.bodyLarge,
-                        ),
-                      ),
-                    ],
-                  ),
+                  Row(children: [Icon(Icons.category, color: Theme.of(context).colorScheme.primary), SizedBox(width: 2.w), Expanded(child: Text(_circle!.category, style: Theme.of(context).textTheme.bodyLarge,),),],),
                   SizedBox(height: 1.h),
-                  Row(
-                    children: [
-                      Icon(Icons.people,
-                          color: Theme.of(context).colorScheme.primary),
-                      SizedBox(width: 2.w),
-                      Expanded(
-                        child: Text(
-                          '${_circle!.memberCount} メンバー',
-                          style: Theme.of(context).textTheme.bodyLarge,
-                        ),
-                      ),
-                    ],
-                  ),
+                  Row(children: [Icon(Icons.people, color: Theme.of(context).colorScheme.primary), SizedBox(width: 2.w), Expanded(child: Text('${_circle!.memberCount} メンバー', style: Theme.of(context).textTheme.bodyLarge,),),],),
                   if (_circle!.isVerified) ...[
                     SizedBox(height: 1.h),
-                    Row(
-                      children: [
-                        Icon(Icons.verified, color: Colors.green),
-                        SizedBox(width: 2.w),
-                        Text(
-                          '大学公認サークル',
-                          style:
-                              Theme.of(context).textTheme.bodyLarge?.copyWith(
-                                    color: Colors.green,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                        ),
-                      ],
-                    ),
+                    Row(children: [Icon(Icons.verified, color: Colors.green), SizedBox(width: 2.w), Text('大学公認サークル', style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: Colors.green, fontWeight: FontWeight.w600,),),],),
                   ],
                 ],
               ),
             ),
           ),
-
           SizedBox(height: 2.h),
-
           // Description
           Card(
             child: Padding(
@@ -298,27 +266,15 @@ class _CircleProfileState extends ConsumerState<CircleProfile>
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    '活動内容',
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.w600,
-                        ),
-                  ),
+                  Text('活動内容', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600,),),
                   SizedBox(height: 2.h),
-                  Text(
-                    _circle!.description,
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          height: 1.6,
-                        ),
-                  ),
+                  Text(_circle!.description, style: Theme.of(context).textTheme.bodyMedium?.copyWith(height: 1.6,),),
                 ],
               ),
             ),
           ),
-
           if (_circle!.socialMediaLinks.isNotEmpty) ...[
             SizedBox(height: 2.h),
-
             // Social Media Links
             Card(
               child: Padding(
@@ -326,12 +282,7 @@ class _CircleProfileState extends ConsumerState<CircleProfile>
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      'ソーシャルメディア',
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                            fontWeight: FontWeight.w600,
-                          ),
-                    ),
+                    Text('ソーシャルメディア', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600,),),
                     SizedBox(height: 2.h),
                     ...List.generate(_circle!.socialMediaLinks.length, (index) {
                       final link = _circle!.socialMediaLinks[index];
@@ -339,22 +290,8 @@ class _CircleProfileState extends ConsumerState<CircleProfile>
                         padding: EdgeInsets.only(bottom: 1.h),
                         child: Row(
                           children: [
-                            Icon(Icons.link,
-                                color: Theme.of(context).colorScheme.primary),
-                            SizedBox(width: 2.w),
-                            Expanded(
-                              child: Text(
-                                link,
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .bodyMedium
-                                    ?.copyWith(
-                                      color:
-                                          Theme.of(context).colorScheme.primary,
-                                      decoration: TextDecoration.underline,
-                                    ),
-                              ),
-                            ),
+                            Icon(Icons.link, color: Theme.of(context).colorScheme.primary), SizedBox(width: 2.w),
+                            Expanded(child: Text(link, style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Theme.of(context).colorScheme.primary, decoration: TextDecoration.underline,),),),
                           ],
                         ),
                       );
@@ -381,61 +318,18 @@ class _CircleProfileState extends ConsumerState<CircleProfile>
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    '連絡先情報',
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.w600,
-                        ),
-                  ),
+                  Text('連絡先情報', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600,),),
                   SizedBox(height: 2.h),
-                  Row(
-                    children: [
-                      Icon(Icons.email,
-                          color: Theme.of(context).colorScheme.primary),
-                      SizedBox(width: 2.w),
-                      Expanded(
-                        child: Text(
-                          _circle!.email,
-                          style: Theme.of(context).textTheme.bodyLarge,
-                        ),
-                      ),
-                    ],
-                  ),
+                  Row(children: [Icon(Icons.email, color: Theme.of(context).colorScheme.primary), SizedBox(width: 2.w), Expanded(child: Text(_circle!.email, style: Theme.of(context).textTheme.bodyLarge,),),],),
                   SizedBox(height: 1.h),
-                  Row(
-                    children: [
-                      Icon(Icons.school,
-                          color: Theme.of(context).colorScheme.primary),
-                      SizedBox(width: 2.w),
-                      Expanded(
-                        child: Text(
-                          _circle!.universityName,
-                          style: Theme.of(context).textTheme.bodyLarge,
-                        ),
-                      ),
-                    ],
-                  ),
+                  Row(children: [Icon(Icons.school, color: Theme.of(context).colorScheme.primary), SizedBox(width: 2.w), Expanded(child: Text(_circle!.universityName, style: Theme.of(context).textTheme.bodyLarge,),),],),
                   SizedBox(height: 1.h),
-                  Row(
-                    children: [
-                      Icon(Icons.group,
-                          color: Theme.of(context).colorScheme.primary),
-                      SizedBox(width: 2.w),
-                      Expanded(
-                        child: Text(
-                          _circle!.circleName,
-                          style: Theme.of(context).textTheme.bodyLarge,
-                        ),
-                      ),
-                    ],
-                  ),
+                  Row(children: [Icon(Icons.group, color: Theme.of(context).colorScheme.primary), SizedBox(width: 2.w), Expanded(child: Text(_circle!.circleName, style: Theme.of(context).textTheme.bodyLarge,),),],),
                 ],
               ),
             ),
           ),
-
           SizedBox(height: 2.h),
-
           // Connection Request Info
           Card(
             child: Padding(
@@ -443,19 +337,9 @@ class _CircleProfileState extends ConsumerState<CircleProfile>
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    'コネクションについて',
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.w600,
-                        ),
-                  ),
+                  Text('DM (ダイレクトメッセージ) について', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600,),), 
                   SizedBox(height: 2.h),
-                  Text(
-                    'コネクションリクエストを送信すると、このサークルとチャットができるようになります。お互いの活動について情報交換したり、共同イベントの企画などが可能です。',
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          height: 1.6,
-                        ),
-                  ),
+                  Text('「DMを送信」ボタンを押すと、このサークルの管理者と直接メッセージのやり取りを開始できます。', style: Theme.of(context).textTheme.bodyMedium?.copyWith(height: 1.6,),),
                 ],
               ),
             ),
@@ -465,67 +349,49 @@ class _CircleProfileState extends ConsumerState<CircleProfile>
     );
   }
 
-  Future<void> _handleSendConnectionRequest() async {
-    if (_circle == null) return;
+  Future<void> _handleSendDm() async {
+    if (_currentUser == null || _circle == null) return;
+
+    // 個人としての情報を設定
+    // UserModelは未実装のため、Auth情報から名前を生成
+    final String individualName = _currentUser!.displayName ?? 
+                                _currentUser!.email?.split('@').first ?? 
+                                'ゲストユーザー';
+    
+    final String? individualAvatarUrl = _currentUser!.photoURL;
+
+    final String circleId = _circle!.id;
+    final String circleName = _circle!.circleName;
+    final String? circleAvatarUrl = _circle!.profileImageUrl;
 
     try {
-      final authService = ref.read(firebaseAuthServiceProvider);
       final firestoreService = ref.read(firestoreServiceProvider);
-      final currentUser = authService.currentUser;
 
-      if (currentUser == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('ログインが必要です'),
-            backgroundColor: Colors.red,
-          ),
+      final channelId = await firestoreService.getOrCreateDmChannel(
+        individualId: _currentUser!.uid,
+        circleId: circleId,
+        individualName: individualName,
+        circleName: circleName,
+        circleAvatarUrl: circleAvatarUrl,
+        individualAvatarUrl: individualAvatarUrl,
+      );
+      
+      if (mounted) {
+        Navigator.pushNamed(
+          context,
+          AppRoutes.dmChat,
+          arguments: {
+            'dmChannelId': channelId,
+            'recipientName': circleName,
+            // 'isCircleAdmin': false, // この引数は DmChatScreen が対応していない場合は不要
+          },
         );
-        return;
       }
 
-      // Get current user's circle information
-      final currentUserCircle =
-          await firestoreService.getCircle(currentUser.uid);
-      if (currentUserCircle == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('サークル情報が見つかりません'),
-            backgroundColor: Colors.red,
-          ),
-        );
-        return;
-      }
-
-      // Create connection request
-      final request = ConnectionRequestModel(
-        id: '', // Will be set by Firestore
-        fromCircleId: currentUser.uid,
-        toCircleId: _circle!.id,
-        fromCircleName: currentUserCircle.circleName,
-        toCircleName: _circle!.circleName,
-        fromUniversityName: currentUserCircle.universityName,
-        toUniversityName: _circle!.universityName,
-        status: ConnectionStatus.pending,
-        createdAt: DateTime.now(),
-        updatedAt: DateTime.now(),
-      );
-
-      await firestoreService.sendConnectionRequest(request);
-
-      setState(() {
-        _isRequestSent = true;
-      });
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('コネクションリクエストを送信しました'),
-          backgroundColor: Colors.green,
-        ),
-      );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('リクエストの送信に失敗しました: $e'),
+          content: Text('DMの開始に失敗しました: $e'),
           backgroundColor: Colors.red,
         ),
       );
@@ -564,14 +430,19 @@ class _CircleProfileState extends ConsumerState<CircleProfile>
                     ),
                   ),
                   SizedBox(height: 3.h),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: [
-                      _buildShareOption("link", "リンクをコピー"),
-                      _buildShareOption("message", "メッセージ"),
-                      _buildShareOption("email", "メール"),
-                      _buildShareOption("more_horiz", "その他"),
-                    ],
+                  SingleChildScrollView( 
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: [
+                        _buildShareOption("link", "リンクをコピー"),
+                        SizedBox(width: 4.w), 
+                        _buildShareOption("message", "メッセージ"),
+                        SizedBox(width: 4.w), 
+                        _buildShareOption("email", "メール"),
+                        SizedBox(width: 4.w), 
+                        _buildShareOption("more_horiz", "その他"),
+                      ],
+                    ),
                   ),
                   SizedBox(height: 3.h),
                 ],
@@ -607,9 +478,15 @@ class _CircleProfileState extends ConsumerState<CircleProfile>
             ),
           ),
           SizedBox(height: 1.h),
-          Text(
-            label,
-            style: AppTheme.lightTheme.textTheme.bodySmall,
+          SizedBox( 
+            width: 14.w, 
+            child: Text(
+              label,
+              style: AppTheme.lightTheme.textTheme.bodySmall,
+              textAlign: TextAlign.center, 
+              maxLines: 2, 
+              overflow: TextOverflow.ellipsis, 
+            ),
           ),
         ],
       ),

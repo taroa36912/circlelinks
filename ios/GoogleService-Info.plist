@@ -3,9 +3,9 @@
 <plist version="1.0">
 <dict>
 	<key>CLIENT_ID</key>
-	<string>379162369299-km0h9crt8ll13blrkqnkn1uscdg3j3nk.apps.googleusercontent.com</string>
+	<string>379162369299-lnktf45n86474517862p37t8t26lc2rc.apps.googleusercontent.com</string>
 	<key>REVERSED_CLIENT_ID</key>
-	<string>com.googleusercontent.apps.379162369299-km0h9crt8ll13blrkqnkn1uscdg3j3nk</string>
+	<string>com.googleusercontent.apps.379162369299-lnktf45n86474517862p37t8t26lc2rc</string>
 	<key>ANDROID_CLIENT_ID</key>
 	<string>379162369299-4a1odiok5ugeu134iq29sl09lh0bjr6g.apps.googleusercontent.com</string>
 	<key>API_KEY</key>
@@ -15,7 +15,7 @@
 	<key>PLIST_VERSION</key>
 	<string>1</string>
 	<key>BUNDLE_ID</key>
-	<string>com.circlelink.app.testProject</string>
+	<string>com.circlelink.app</string>
 	<key>PROJECT_ID</key>
 	<string>circlelinks-9ac71</string>
 	<key>STORAGE_BUCKET</key>
@@ -31,6 +31,6 @@
 	<key>IS_SIGNIN_ENABLED</key>
 	<true></true>
 	<key>GOOGLE_APP_ID</key>
-	<string>1:379162369299:ios:b6106ab0b37f09ce114ee6</string>
+	<string>1:379162369299:ios:51592f1a6666b275114ee6</string>
 </dict>
 </plist>

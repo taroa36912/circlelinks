@@ -277,8 +277,8 @@ class FirestoreService {
       final query = _firestore.collection(dmChannelsCollection).where('participants', arrayContains: individualId);
       final snapshot = await query.get();
       final existingChannels = snapshot.docs.where((doc) {
-        final participants = List<String>.from(doc.data()['participants'] ?? []);
-        return participants.contains(circleId);
+        final data = doc.data();
+        return data['circleId'] == circleId && data['individualId'] == individualId;
       }).toList();
 
       if (existingChannels.isNotEmpty) {

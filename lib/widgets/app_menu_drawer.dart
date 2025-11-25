@@ -40,8 +40,17 @@ class _AppMenuDrawerState extends ConsumerState<AppMenuDrawer> {
     final firestoreService = ref.read(firestoreServiceProvider);
     
     try {
-      final userData = await firestoreService.getUser(user.uid);
-      final circleData = await firestoreService.getCircle(user.uid); 
+      // エラーになっても止まらないように個別にtry-catchするか、null許容で進める
+      // ここでは getUser や getCircle が失敗してもメニュー自体は開けるようにする
+      UserModel? userData;
+      try {
+        userData = await firestoreService.getUser(user.uid);
+      } catch (_) {}
+
+      CircleModel? circleData;
+      try {
+        circleData = await firestoreService.getCircle(user.uid); 
+      } catch (_) {}
 
       if (mounted) {
         setState(() {
@@ -77,7 +86,7 @@ class _AppMenuDrawerState extends ConsumerState<AppMenuDrawer> {
   }
 
   void _showComingSoonSnackBar() {
-    // ⬇️ 修正: ここにあった Navigator.pop(context) を削除しました (二重pop防止)
+    Navigator.pop(context); // ドロワーを閉じる
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Text('この機能は現在準備中です'),
@@ -107,8 +116,9 @@ class _AppMenuDrawerState extends ConsumerState<AppMenuDrawer> {
               child: Center(child: CircularProgressIndicator()),
             )
           ] else ...[
+            // ⬇️ --- 修正: 条件分岐を削除し、全員に表示 --- ⬇️
             
-            // ⬇️ --- 復活: DM一覧 (共通) --- ⬇️
+            // --- メッセージ ---
             _buildMenuSection(theme, "メッセージ"),
             _buildMenuItem(
               theme,
@@ -119,60 +129,56 @@ class _AppMenuDrawerState extends ConsumerState<AppMenuDrawer> {
                 Navigator.pushNamed(context, AppRoutes.dmList); 
               },
             ),
-            // ⬆️ ---------------------- ⬆️
 
-            if (hasCircle) ...[
-              // --- ✅ サークル作成済みのメニュー ---
-              _buildMenuSection(theme, "サークル機能"),
-              _buildMenuItem(
-                theme,
-                icon: Icons.admin_panel_settings_outlined, 
-                title: "サークル管理",
-                onTap: () {
-                  Navigator.pop(context); 
-                  Navigator.pushNamed(context, AppRoutes.myCirclesList);
-                },
-              ),
-              _buildMenuItem(
-                theme,
-                icon: Icons.work_outline,
-                title: "Myポートフォリオ",
-                onTap: () {
-                  Navigator.pop(context); 
-                  Navigator.pushNamed(context, AppRoutes.portfolioBuilder); 
-                },
-              ),
-              _buildMenuItem(
-                theme,
-                icon: Icons.people_outline,
-                title: "サークル間コネクション",
-                onTap: () {
-                  Navigator.pop(context); 
-                  Navigator.pushNamed(context, AppRoutes.connections);
-                },
-              ),
-              _buildMenuItem(
-                theme,
-                icon: Icons.add_circle_outline,
-                title: "イベント作成",
-                onTap: () {
-                  Navigator.pop(context); 
-                  Navigator.pushNamed(context, AppRoutes.eventCreation);
-                },
-              ),
-            ] else ...[
-              // --- ❌ サークル未作成のメニュー ---
-              _buildMenuSection(theme, "はじめに"),
-              _buildMenuItem(
-                theme,
-                icon: Icons.add_business_outlined, 
-                title: "サークルを登録する", // 👈 これが消えていたと言われたボタンです
-                onTap: () {
-                  Navigator.pop(context); 
-                  Navigator.pushNamed(context, AppRoutes.circleRegistration); 
-                },
-              ),
-            ],
+            // --- サークル機能 (全員に表示) ---
+            _buildMenuSection(theme, "サークル機能"),
+            _buildMenuItem(
+              theme,
+              icon: Icons.admin_panel_settings_outlined, 
+              title: "サークル管理",
+              onTap: () {
+                Navigator.pop(context); 
+                Navigator.pushNamed(context, AppRoutes.myCirclesList);
+              },
+            ),
+            _buildMenuItem(
+              theme,
+              icon: Icons.group_outlined,
+              title: "所属サークル一覧",
+              onTap: _showComingSoonSnackBar,
+            ),
+            _buildMenuItem(
+              theme,
+              icon: Icons.work_outline,
+              title: "Myポートフォリオ",
+              onTap: () {
+                Navigator.pop(context); 
+                Navigator.pushNamed(context, AppRoutes.portfolioBuilder); 
+              },
+            ),
+            _buildMenuItem(
+              theme,
+              icon: Icons.people_outline,
+              title: "サークル間コネクション",
+              onTap: () {
+                Navigator.pop(context); 
+                Navigator.pushNamed(context, AppRoutes.connections);
+              },
+            ),
+            _buildMenuItem(
+              theme,
+              icon: Icons.add_circle_outline,
+              title: "イベント作成",
+              onTap: () {
+                Navigator.pop(context); 
+                Navigator.pushNamed(context, AppRoutes.eventCreation);
+              },
+            ),
+            
+            // 「はじめに」セクションと「サークルを登録する」ボタンは削除しました
+            // (サークル登録は「サークル管理」画面の中から行えるため)
+
+            // ⬆️ --- 修正ここまで --- ⬆️
           ],
           
           const Divider(),
@@ -184,19 +190,15 @@ class _AppMenuDrawerState extends ConsumerState<AppMenuDrawer> {
             icon: Icons.account_circle_outlined,
             title: "プロフィール設定",
             onTap: () {
-              Navigator.pop(context); // ドロワーを閉じる (1回だけ)
-              // ⬇️ プロフィール設定画面へ遷移 (現在はSnackBar)
-              _showComingSoonSnackBar(); 
+              Navigator.pop(context); 
+              Navigator.pushNamed(context, AppRoutes.profileSettings);            
             },
           ),
           _buildMenuItem(
             theme,
             icon: Icons.notifications_outlined,
             title: "通知設定",
-            onTap: () {
-              Navigator.pop(context);
-              _showComingSoonSnackBar();
-            },
+            onTap: _showComingSoonSnackBar,
           ),
           
           _buildMenuSection(theme, "サポート"),
@@ -204,10 +206,7 @@ class _AppMenuDrawerState extends ConsumerState<AppMenuDrawer> {
             theme,
             icon: Icons.help_outline,
             title: "ヘルプ & サポート",
-            onTap: () {
-              Navigator.pop(context);
-              _showComingSoonSnackBar();
-            },
+            onTap: _showComingSoonSnackBar,
           ),
           
           const Divider(),
@@ -224,28 +223,77 @@ class _AppMenuDrawerState extends ConsumerState<AppMenuDrawer> {
     );
   }
 
-  // ... (Header, Section, Item ビルダーは変更なし) ...
   Widget _buildDrawerHeader(ThemeData theme, String displayName, String? profileImageUrl, bool hasCircle) {
     return UserAccountsDrawerHeader(
-      accountName: Text(displayName, style: theme.textTheme.titleLarge?.copyWith(color: theme.colorScheme.onPrimary, fontWeight: FontWeight.w600,),),
-      accountEmail: Text(_currentUser?.email ?? '', style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onPrimary.withOpacity(0.8),),),
+      accountName: Text(
+        displayName,
+        style: theme.textTheme.titleLarge?.copyWith(
+          color: theme.colorScheme.onPrimary,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+      accountEmail: Text(
+        _currentUser?.email ?? '',
+        style: theme.textTheme.bodyMedium?.copyWith(
+          color: theme.colorScheme.onPrimary.withOpacity(0.8),
+        ),
+      ),
       currentAccountPicture: CircleAvatar(
         backgroundColor: theme.colorScheme.onPrimary,
         backgroundImage: (profileImageUrl != null) ? NetworkImage(profileImageUrl) : null,
-        child: (profileImageUrl == null) ? Icon(hasCircle ? Icons.group_outlined : Icons.person_outline, size: 40, color: theme.colorScheme.primary,) : null,
+        child: (profileImageUrl == null) 
+          ? Icon(
+              // サークル未作成の場合はアカウントアイコン、作成済みの場合はグループアイコン
+              hasCircle ? Icons.group_outlined : Icons.person_outline, 
+              size: 40,
+              color: theme.colorScheme.primary,
+            ) 
+          : null,
       ),
-      decoration: BoxDecoration(color: theme.colorScheme.primary,),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.primary,
+      ),
       onDetailsPressed: () {
         Navigator.pop(context); 
-        _showComingSoonSnackBar(); 
+        Navigator.pushNamed(context, AppRoutes.profileSettings);
       },
     );
   }
+  
   Widget _buildMenuSection(ThemeData theme, String title) {
-    return Padding(padding: EdgeInsets.fromLTRB(4.w, 3.h, 4.w, 1.h), child: Text(title.toUpperCase(), style: theme.textTheme.labelMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant.withOpacity(0.7), fontWeight: FontWeight.w600, letterSpacing: 0.8,),),);
+    return Padding(
+      padding: EdgeInsets.fromLTRB(4.w, 3.h, 4.w, 1.h),
+      child: Text(
+        title.toUpperCase(),
+        style: theme.textTheme.labelMedium?.copyWith(
+          color: theme.colorScheme.onSurfaceVariant.withOpacity(0.7),
+          fontWeight: FontWeight.w600,
+          letterSpacing: 0.8,
+        ),
+      ),
+    );
   }
-  Widget _buildMenuItem(ThemeData theme, {required IconData icon, required String title, required VoidCallback onTap, bool isDestructive = false,}) {
+
+  Widget _buildMenuItem(ThemeData theme, {
+    required IconData icon,
+    required String title,
+    required VoidCallback onTap,
+    bool isDestructive = false,
+  }) {
     final color = isDestructive ? theme.colorScheme.error : theme.colorScheme.onSurface;
-    return ListTile(leading: Icon(icon, color: color, size: 24), title: Text(title, style: theme.textTheme.titleMedium?.copyWith(color: color, fontWeight: FontWeight.w500,),), trailing: (isDestructive || icon == Icons.logout) ? null : Icon(Icons.arrow_forward_ios, size: 16, color: theme.colorScheme.onSurfaceVariant), onTap: onTap,);
+    return ListTile(
+      leading: Icon(icon, color: color, size: 24),
+      title: Text(
+        title,
+        style: theme.textTheme.titleMedium?.copyWith(
+          color: color,
+          fontWeight: FontWeight.w500,
+        ),
+      ),
+      trailing: (isDestructive || icon == Icons.logout) 
+        ? null 
+        : Icon(Icons.arrow_forward_ios, size: 16, color: theme.colorScheme.onSurfaceVariant),
+      onTap: onTap,
+    );
   }
 }

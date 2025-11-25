@@ -16,6 +16,7 @@ import '../presentation/circle_admin/my_circles_list_screen.dart';
 import '../presentation/dm_chat/dm_chat_screen.dart';
 import '../presentation/dm_list/dm_list_screen.dart'; 
 import '../core/models/circle_model.dart';
+import '../presentation/profile_settings/profile_settings_screen.dart';
 
 class AppRoutes {
   static const String initial = '/';
@@ -34,12 +35,11 @@ class AppRoutes {
   static const String dmChat = '/dm-chat';
   static const String dmList = '/dm-list';
   
-  // サークル管理関連
   static const String myCirclesList = '/my-circles-list';
   static const String circleManagement = '/circle-management';
   static const String circleDmList = '/circle-dm-list';
-  
-  // ⬇️ エラー回避のためのエイリアス（古いコードがこれを参照している場合用）
+  static const String profileSettings = '/profile-settings';
+
   static const String circleAdmin = myCirclesList; 
 
   static Map<String, WidgetBuilder> routes = {
@@ -80,6 +80,7 @@ class AppRoutes {
       );
     },
     
+    profileSettings: (context) => const ProfileSettingsScreen(),
     eventCreation: (context) => const EventCreation(),
     eventDetails: (context) => const EventDetails(),
     connections: (context) => const Connections(),

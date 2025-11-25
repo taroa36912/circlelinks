@@ -1,3 +1,4 @@
+import 'dart:async'; // 👈 StreamSubscription用に必要
 import 'package:flutter/material.dart';
 import 'package:sizer/sizer.dart';
 
@@ -25,8 +26,14 @@ class _CircleDiscoveryState extends ConsumerState<CircleDiscovery>
   
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
+  // ⬇️ --- リスナー管理用変数を追加 --- ⬇️
+  StreamSubscription? _authSubscription;
+  StreamSubscription? _circlesSubscription;
+  // ⬆️ ----------------------------- ⬆️
+
   String _currentSort = 'Relevance';
   String _searchQuery = '';
+  bool _isLoading = false;
   bool _isLoadingMore = false;
 
   Map<String, dynamic> _activeFilters = {
@@ -55,24 +62,52 @@ class _CircleDiscoveryState extends ConsumerState<CircleDiscovery>
     _tabController = TabController(length: _tabs.length, vsync: this);
     _scrollController.addListener(_onScroll);
     _tabController.addListener(_onTabChanged);
-    _loadCircles();
+    
+    // ⬇️ --- 修正: いきなりロードせず、Auth状態を監視する --- ⬇️
+    _setupAuthListener();
   }
 
-  void _loadCircles() {
-    final firestoreService = ref.read(firestoreServiceProvider);
-    firestoreService.getCirclesStream().listen((circles) {
-      if (mounted) {
-        setState(() {
-          _allCircles = circles;
-          _filteredCircles = List.from(_allCircles);
-          _applyFiltersAndSearch();
-        });
+  void _setupAuthListener() {
+    final authService = ref.read(firebaseAuthServiceProvider);
+    
+    // 認証状態の変更を監視
+    _authSubscription = authService.authStateChanges.listen((user) {
+      if (user != null) {
+        // ユーザーが存在することを確認してからデータロードを開始
+        _loadCircles();
       }
     });
   }
 
+  void _loadCircles() {
+    // 既存のリスナーがあればキャンセル（重複防止）
+    _circlesSubscription?.cancel();
+
+    final firestoreService = ref.read(firestoreServiceProvider);
+    _circlesSubscription = firestoreService.getCirclesStream().listen(
+      (circles) {
+        if (mounted) {
+          setState(() {
+            _allCircles = circles;
+            _filteredCircles = List.from(_allCircles);
+            _applyFiltersAndSearch();
+          });
+        }
+      },
+      onError: (error) {
+        print("CircleDiscovery Error: $error");
+        // ここでエラーハンドリングを行えば、ログへの赤文字出力を抑制できる場合もあります
+      },
+    );
+  }
+
   @override
   void dispose() {
+    // ⬇️ --- リスナーの破棄 --- ⬇️
+    _authSubscription?.cancel();
+    _circlesSubscription?.cancel();
+    // ⬆️ -------------------- ⬆️
+    
     _tabController.dispose();
     _searchController.dispose();
     _scrollController.dispose();
@@ -218,12 +253,14 @@ class _CircleDiscoveryState extends ConsumerState<CircleDiscovery>
 
   Future<void> _refreshCircles() async {
     setState(() {
+      _isLoading = true;
     });
 
     // Refresh data from Firebase
     _loadCircles();
 
     setState(() {
+      _isLoading = false;
     });
   }
 
@@ -310,10 +347,10 @@ class _CircleDiscoveryState extends ConsumerState<CircleDiscovery>
     final colorScheme = theme.colorScheme;
 
     return Scaffold(
-      key: _scaffoldKey, // ScaffoldKey を設定
+      key: _scaffoldKey,
       backgroundColor: colorScheme.surface,
       
-      endDrawer: const AppMenuDrawer(), // 右側ドロワー
+      endDrawer: const AppMenuDrawer(),
       
       body: NestedScrollView(
         headerSliverBuilder: (context, innerBoxIsScrolled) {
@@ -344,7 +381,7 @@ class _CircleDiscoveryState extends ConsumerState<CircleDiscovery>
                 ),
               ],
               bottom: PreferredSize(
-                preferredSize: Size.fromHeight(31.h),
+                preferredSize: Size.fromHeight(31.h), // 以前修正した 31.h を維持
                 child: Container(
                   color: colorScheme.surface,
                   child: Column(

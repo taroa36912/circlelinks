@@ -115,9 +115,7 @@ class _AppMenuDrawerState extends ConsumerState<AppMenuDrawer> {
               padding: EdgeInsets.all(16.0),
               child: Center(child: CircularProgressIndicator()),
             )
-          ] else ...[
-            // ⬇️ --- 修正: 条件分岐を削除し、全員に表示 --- ⬇️
-            
+          ] else ...[            
             // --- メッセージ ---
             _buildMenuSection(theme, "メッセージ"),
             _buildMenuItem(
@@ -158,15 +156,6 @@ class _AppMenuDrawerState extends ConsumerState<AppMenuDrawer> {
             ),
             _buildMenuItem(
               theme,
-              icon: Icons.people_outline,
-              title: "サークル間コネクション",
-              onTap: () {
-                Navigator.pop(context); 
-                Navigator.pushNamed(context, AppRoutes.connections);
-              },
-            ),
-            _buildMenuItem(
-              theme,
               icon: Icons.add_circle_outline,
               title: "イベント作成",
               onTap: () {
@@ -174,11 +163,6 @@ class _AppMenuDrawerState extends ConsumerState<AppMenuDrawer> {
                 Navigator.pushNamed(context, AppRoutes.eventCreation);
               },
             ),
-            
-            // 「はじめに」セクションと「サークルを登録する」ボタンは削除しました
-            // (サークル登録は「サークル管理」画面の中から行えるため)
-
-            // ⬆️ --- 修正ここまで --- ⬆️
           ],
           
           const Divider(),

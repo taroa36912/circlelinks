@@ -1,4 +1,4 @@
-import 'dart:async'; // 👈 StreamSubscription用に必要
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:sizer/sizer.dart';
 
@@ -26,10 +26,13 @@ class _CircleDiscoveryState extends ConsumerState<CircleDiscovery>
   
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
-  // ⬇️ --- リスナー管理用変数を追加 --- ⬇️
   StreamSubscription? _authSubscription;
   StreamSubscription? _circlesSubscription;
-  // ⬆️ ----------------------------- ⬆️
+
+  // ⬇️ --- 新規: モード管理用の変数 --- ⬇️
+  bool _isSelectionMode = false;
+  String? _sourceCircleId;
+  // ⬆️ ---------------------------- ⬆️
 
   String _currentSort = 'Relevance';
   String _searchQuery = '';
@@ -63,24 +66,33 @@ class _CircleDiscoveryState extends ConsumerState<CircleDiscovery>
     _scrollController.addListener(_onScroll);
     _tabController.addListener(_onTabChanged);
     
-    // ⬇️ --- 修正: いきなりロードせず、Auth状態を監視する --- ⬇️
     _setupAuthListener();
   }
 
+  // ⬇️ --- 新規: 画面遷移引数の取得 (didChangeDependencies) --- ⬇️
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+    if (args != null) {
+      setState(() {
+        _isSelectionMode = args['isSelectionMode'] ?? false;
+        _sourceCircleId = args['sourceCircleId'];
+      });
+    }
+  }
+  // ⬆️ ----------------------------------------------------- ⬆️
+
   void _setupAuthListener() {
     final authService = ref.read(firebaseAuthServiceProvider);
-    
-    // 認証状態の変更を監視
     _authSubscription = authService.authStateChanges.listen((user) {
       if (user != null) {
-        // ユーザーが存在することを確認してからデータロードを開始
         _loadCircles();
       }
     });
   }
 
   void _loadCircles() {
-    // 既存のリスナーがあればキャンセル（重複防止）
     _circlesSubscription?.cancel();
 
     final firestoreService = ref.read(firestoreServiceProvider);
@@ -96,18 +108,14 @@ class _CircleDiscoveryState extends ConsumerState<CircleDiscovery>
       },
       onError: (error) {
         print("CircleDiscovery Error: $error");
-        // ここでエラーハンドリングを行えば、ログへの赤文字出力を抑制できる場合もあります
       },
     );
   }
 
   @override
   void dispose() {
-    // ⬇️ --- リスナーの破棄 --- ⬇️
     _authSubscription?.cancel();
     _circlesSubscription?.cancel();
-    // ⬆️ -------------------- ⬆️
-    
     _tabController.dispose();
     _searchController.dispose();
     _scrollController.dispose();
@@ -164,7 +172,6 @@ class _CircleDiscoveryState extends ConsumerState<CircleDiscovery>
   void _applyFiltersAndSearch() {
     List<CircleModel> filtered = List.from(_filteredCircles);
 
-    // Apply search
     if (_searchQuery.isNotEmpty) {
       filtered = filtered.where((circle) {
         final name = circle.circleName.toLowerCase();
@@ -178,7 +185,6 @@ class _CircleDiscoveryState extends ConsumerState<CircleDiscovery>
       }).toList();
     }
 
-    // Apply filters
     if ((_activeFilters['universities'] as List).isNotEmpty) {
       filtered = filtered.where((circle) {
         return (_activeFilters['universities'] as List)
@@ -200,13 +206,18 @@ class _CircleDiscoveryState extends ConsumerState<CircleDiscovery>
       }).toList();
     }
 
-    // Apply member count filter
     final minMembers = _activeFilters['minMembers'] as int;
     final maxMembers = _activeFilters['maxMembers'] as int;
     filtered = filtered.where((circle) {
       return circle.memberCount >= minMembers &&
           circle.memberCount <= maxMembers;
     }).toList();
+
+    // ⬇️ 選択モードの場合、自分自身（sourceCircleId）はリストから除外する ⬇️
+    if (_isSelectionMode && _sourceCircleId != null) {
+      filtered = filtered.where((c) => c.id != _sourceCircleId).toList();
+    }
+    // ⬆️ ------------------------------------------------------- ⬆️
 
     setState(() {
       _filteredCircles = filtered;
@@ -217,51 +228,33 @@ class _CircleDiscoveryState extends ConsumerState<CircleDiscovery>
   void _sortCircles() {
     switch (_currentSort) {
       case 'Distance':
-        // Mock distance sorting - sort by creation date
         _filteredCircles.sort((a, b) => b.createdAt.compareTo(a.createdAt));
         break;
       case 'Member Count':
         _filteredCircles.sort((a, b) => b.memberCount.compareTo(a.memberCount));
         break;
       case 'Activity Level':
-        // Sort by verification status
         _filteredCircles.sort((a, b) => b.isVerified ? 1 : -1);
         break;
       case 'Recently Active':
         _filteredCircles.sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
         break;
-      default: // Relevance
-        // Keep original order for relevance
+      default: 
         break;
     }
   }
 
   Future<void> _loadMoreCircles() async {
     if (_isLoadingMore) return;
-
-    setState(() {
-      _isLoadingMore = true;
-    });
-
-    // Simulate loading more data
+    setState(() { _isLoadingMore = true; });
     await Future.delayed(const Duration(seconds: 1));
-
-    setState(() {
-      _isLoadingMore = false;
-    });
+    setState(() { _isLoadingMore = false; });
   }
 
   Future<void> _refreshCircles() async {
-    setState(() {
-      _isLoading = true;
-    });
-
-    // Refresh data from Firebase
+    setState(() { _isLoading = true; });
     _loadCircles();
-
-    setState(() {
-      _isLoading = false;
-    });
+    setState(() { _isLoading = false; });
   }
 
   void _showFilterModal() {
@@ -277,7 +270,6 @@ class _CircleDiscoveryState extends ConsumerState<CircleDiscovery>
   }
 
   void _onVoiceSearch() {
-    // Mock voice search implementation
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Text('Voice search activated'),
@@ -288,56 +280,15 @@ class _CircleDiscoveryState extends ConsumerState<CircleDiscovery>
 
   List<Widget> _buildActiveFilterChips() {
     List<Widget> chips = [];
-
-    // University filters
     for (String university in _activeFilters['universities'] as List<String>) {
-      chips.add(
-        FilterChipWidget(
-          label: university,
-          isSelected: true,
-          onRemove: () {
-            setState(() {
-              (_activeFilters['universities'] as List<String>)
-                  .remove(university);
-              _applyFiltersAndSearch();
-            });
-          },
-        ),
-      );
+      chips.add(FilterChipWidget(label: university, isSelected: true, onRemove: () { setState(() { (_activeFilters['universities'] as List<String>).remove(university); _applyFiltersAndSearch(); }); },),);
     }
-
-    // Activity type filters
     for (String type in _activeFilters['activityTypes'] as List<String>) {
-      chips.add(
-        FilterChipWidget(
-          label: type,
-          isSelected: true,
-          onRemove: () {
-            setState(() {
-              (_activeFilters['activityTypes'] as List<String>).remove(type);
-              _applyFiltersAndSearch();
-            });
-          },
-        ),
-      );
+      chips.add(FilterChipWidget(label: type, isSelected: true, onRemove: () { setState(() { (_activeFilters['activityTypes'] as List<String>).remove(type); _applyFiltersAndSearch(); }); },),);
     }
-
-    // Skills filters
     for (String skill in _activeFilters['skills'] as List<String>) {
-      chips.add(
-        FilterChipWidget(
-          label: skill,
-          isSelected: true,
-          onRemove: () {
-            setState(() {
-              (_activeFilters['skills'] as List<String>).remove(skill);
-              _applyFiltersAndSearch();
-            });
-          },
-        ),
-      );
+      chips.add(FilterChipWidget(label: skill, isSelected: true, onRemove: () { setState(() { (_activeFilters['skills'] as List<String>).remove(skill); _applyFiltersAndSearch(); }); },),);
     }
-
     return chips;
   }
 
@@ -350,14 +301,16 @@ class _CircleDiscoveryState extends ConsumerState<CircleDiscovery>
       key: _scaffoldKey,
       backgroundColor: colorScheme.surface,
       
-      endDrawer: const AppMenuDrawer(),
+      // 選択モードならドロワーは無効化
+      endDrawer: _isSelectionMode ? null : const AppMenuDrawer(),
       
       body: NestedScrollView(
         headerSliverBuilder: (context, innerBoxIsScrolled) {
           return [
             SliverAppBar(
+              // ⬇️ タイトルを変更 ⬇️
               title: Text(
-                'Circle Discovery',
+                _isSelectionMode ? 'リクエスト送信先を選択' : 'Circle Discovery',
                 style: theme.textTheme.titleLarge?.copyWith(
                   fontWeight: FontWeight.w600,
                 ),
@@ -369,77 +322,30 @@ class _CircleDiscoveryState extends ConsumerState<CircleDiscovery>
               backgroundColor: colorScheme.surface,
               foregroundColor: colorScheme.onSurface,
               actions: [
-                IconButton(
-                  onPressed: () {
-                    _scaffoldKey.currentState?.openEndDrawer(); 
-                  },
-                  icon: CustomIconWidget(
-                    iconName: 'menu', 
-                    color: colorScheme.onSurface,
-                    size: 24,
+                // 選択モードならメニューボタンは非表示
+                if (!_isSelectionMode)
+                  IconButton(
+                    onPressed: () {
+                      _scaffoldKey.currentState?.openEndDrawer(); 
+                    },
+                    icon: CustomIconWidget(
+                      iconName: 'menu', 
+                      color: colorScheme.onSurface,
+                      size: 24,
+                    ),
                   ),
-                ),
               ],
               bottom: PreferredSize(
-                preferredSize: Size.fromHeight(31.h), // 以前修正した 31.h を維持
+                preferredSize: Size.fromHeight(31.h), 
                 child: Container(
                   color: colorScheme.surface,
                   child: Column(
                     children: [
-                      // Search Bar
-                      SearchBarWidget(
-                        controller: _searchController,
-                        onChanged: _onSearchChanged,
-                        onVoiceSearch: _onVoiceSearch,
-                        hintText: 'Search circles in Japanese or English...',
-                      ),
-
-                      // Tab Bar
-                      Container(
-                        margin: EdgeInsets.symmetric(horizontal: 4.w),
-                        child: TabBar(
-                          controller: _tabController,
-                          isScrollable: true,
-                          indicatorColor: colorScheme.primary,
-                          labelColor: colorScheme.primary,
-                          unselectedLabelColor: colorScheme.onSurfaceVariant,
-                          tabs: _tabs.map((tab) => Tab(text: tab)).toList(),
-                        ),
-                      ),
-
+                      // ... (SearchBar, TabBar など変更なし) ...
+                      SearchBarWidget(controller: _searchController, onChanged: _onSearchChanged, onVoiceSearch: _onVoiceSearch, hintText: 'Search circles in Japanese or English...',),
+                      Container(margin: EdgeInsets.symmetric(horizontal: 4.w), child: TabBar(controller: _tabController, isScrollable: true, indicatorColor: colorScheme.primary, labelColor: colorScheme.primary, unselectedLabelColor: colorScheme.onSurfaceVariant, tabs: _tabs.map((tab) => Tab(text: tab)).toList(),),),
                       SizedBox(height: 1.h),
-
-                      // Filter Chips and Sort
-                      SizedBox(
-                        height: 6.h,
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: ListView(
-                                scrollDirection: Axis.horizontal,
-                                padding: EdgeInsets.symmetric(horizontal: 4.w),
-                                children: [
-                                  ..._buildActiveFilterChips(),
-                                  if (_buildActiveFilterChips().isEmpty)
-                                    FilterChipWidget(
-                                      label: 'All Circles',
-                                      count: _filteredCircles.length,
-                                      isSelected: false,
-                                    ),
-                                ],
-                              ),
-                            ),
-                            Padding(
-                              padding: EdgeInsets.only(right: 4.w),
-                              child: SortButtonWidget(
-                                currentSort: _currentSort,
-                                onSortChanged: _onSortChanged,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-
+                      SizedBox(height: 6.h, child: Row(children: [Expanded(child: ListView(scrollDirection: Axis.horizontal, padding: EdgeInsets.symmetric(horizontal: 4.w), children: [..._buildActiveFilterChips(), if (_buildActiveFilterChips().isEmpty) FilterChipWidget(label: 'All Circles', count: _filteredCircles.length, isSelected: false,),],),), Padding(padding: EdgeInsets.only(right: 4.w), child: SortButtonWidget(currentSort: _currentSort, onSortChanged: _onSortChanged,),),],),),
                       SizedBox(height: 1.h),
                     ],
                   ),
@@ -453,8 +359,7 @@ class _CircleDiscoveryState extends ConsumerState<CircleDiscovery>
           child: _filteredCircles.isEmpty
               ? EmptyStateWidget(
                   title: 'No circles found',
-                  description:
-                      'Try adjusting your filters or search terms to discover more circles.',
+                  description: 'Try adjusting your filters or search terms.',
                   actionText: 'Adjust Filters',
                   onActionPressed: _showFilterModal,
                 )
@@ -464,12 +369,7 @@ class _CircleDiscoveryState extends ConsumerState<CircleDiscovery>
                   itemCount: _filteredCircles.length + (_isLoadingMore ? 1 : 0),
                   itemBuilder: (context, index) {
                     if (index == _filteredCircles.length) {
-                      return Container(
-                        padding: EdgeInsets.all(4.w),
-                        child: const Center(
-                          child: CircularProgressIndicator(),
-                        ),
-                      );
+                      return Container(padding: EdgeInsets.all(4.w), child: const Center(child: CircularProgressIndicator()),);
                     }
 
                     final circle = _filteredCircles[index];
@@ -479,11 +379,18 @@ class _CircleDiscoveryState extends ConsumerState<CircleDiscovery>
                         Navigator.pushNamed(
                           context,
                           '/circle-profile',
-                          arguments: {'circleId': circle.id},
+                          arguments: {
+                            'circleId': circle.id,
+                            // ⬇️ モード情報を引き継ぐ ⬇️
+                            'isSelectionMode': _isSelectionMode,
+                            'sourceCircleId': _sourceCircleId,
+                          },
                         );
                       },
                       onLongPress: () {
-                        _showQuickActions(context, circle);
+                        if (!_isSelectionMode) { // 選択モード中は無効化
+                          _showQuickActions(context, circle);
+                        }
                       },
                     );
                   },
@@ -502,74 +409,9 @@ class _CircleDiscoveryState extends ConsumerState<CircleDiscovery>
   }
 
   void _showQuickActions(BuildContext context, CircleModel circle) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (context) => Container(
-        decoration: BoxDecoration(
-          color: colorScheme.surface,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 40,
-              height: 4,
-              margin: EdgeInsets.symmetric(vertical: 2.h),
-              decoration: BoxDecoration(
-                color: colorScheme.outline,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            ListTile(
-              leading: CustomIconWidget(
-                iconName: 'favorite_border',
-                color: colorScheme.onSurface,
-                size: 24,
-              ),
-              title: const Text('Save to Favorites'),
-              onTap: () {
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                      content: Text('${circle.circleName} saved to favorites')),
-                );
-              },
-            ),
-            ListTile(
-              leading: CustomIconWidget(
-                iconName: 'share',
-                color: colorScheme.onSurface,
-                size: 24,
-              ),
-              title: const Text('Share Circle'),
-              onTap: () {
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Circle shared')),
-                );
-              },
-            ),
-            ListTile(
-              leading: CustomIconWidget(
-                iconName: 'search',
-                color: colorScheme.onSurface,
-                size: 24,
-              ),
-              title: const Text('Find Similar Circles'),
-              onTap: () {
-                Navigator.pop(context);
-                // Implement similar circles logic
-              },
-            ),
-            SizedBox(height: 2.h),
-          ],
-        ),
-      ),
-    );
+     // ... (変更なし) ...
+     final theme = Theme.of(context);
+     final colorScheme = theme.colorScheme;
+     showModalBottomSheet(context: context, backgroundColor: Colors.transparent, builder: (context) => Container(decoration: BoxDecoration(color: colorScheme.surface, borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),), child: Column(mainAxisSize: MainAxisSize.min, children: [Container(width: 40, height: 4, margin: EdgeInsets.symmetric(vertical: 2.h), decoration: BoxDecoration(color: colorScheme.outline, borderRadius: BorderRadius.circular(2),),), ListTile(leading: CustomIconWidget(iconName: 'favorite_border', color: colorScheme.onSurface, size: 24,), title: const Text('Save to Favorites'), onTap: () {Navigator.pop(context); ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${circle.circleName} saved to favorites')),);},), ListTile(leading: CustomIconWidget(iconName: 'share', color: colorScheme.onSurface, size: 24,), title: const Text('Share Circle'), onTap: () {Navigator.pop(context); ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Circle shared')),);},), ListTile(leading: CustomIconWidget(iconName: 'search', color: colorScheme.onSurface, size: 24,), title: const Text('Find Similar Circles'), onTap: () {Navigator.pop(context);},), SizedBox(height: 2.h),],),),);
   }
 }

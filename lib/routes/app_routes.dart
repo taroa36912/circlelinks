@@ -54,10 +54,8 @@ class AppRoutes {
     myPage: (context) => const MyPageScreen(), 
     portfolioBuilder: (context) => const PortfolioBuilder(),
     
-    // ⬇️ 正しく DmListScreen を指定 ⬇️
     dmList: (context) => const DmListScreen(),
 
-    // サークル管理フロー
     myCirclesList: (context) => const MyCirclesListScreen(),
 
     circleManagement: (context) { 
@@ -83,7 +81,16 @@ class AppRoutes {
     profileSettings: (context) => const ProfileSettingsScreen(),
     eventCreation: (context) => const EventCreation(),
     eventDetails: (context) => const EventDetails(),
-    connections: (context) => const Connections(),
+    
+    // ⬇️ --- 修正: connections ルートを追加 (引数を受け取る) --- ⬇️
+    connections: (context) {
+      final args =
+          ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+      // サークル管理画面から circleId が渡される
+      return Connections(circleId: args?['circleId'] ?? '');
+    },
+    // ⬆️ --------------------------------------------------- ⬆️
+
     chat: (context) {
       final args =
           ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;

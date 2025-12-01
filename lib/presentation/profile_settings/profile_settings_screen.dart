@@ -40,7 +40,12 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
     super.initState();
     _userNameController = TextEditingController();
     _emailController = TextEditingController();
-    _loadUserData();
+
+    // ⬇️ --- 修正: 描画完了後にデータロードを実行 --- ⬇️
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadUserData();
+    });
+    // ⬆️ ----------------------------------------- ⬆️
   }
 
   @override
@@ -60,12 +65,14 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
     _firebaseUser = authService.currentUser;
 
     if (_firebaseUser == null) {
+      // ここで Navigator.pop が呼ばれる可能性があるため、addPostFrameCallback が必要だった
       Navigator.pop(context);
       return;
     }
 
     final firestoreService = ref.read(firestoreServiceProvider);
     try {
+      // 1. ユーザー情報の取得を試みる
       final userDoc = await firestoreService.getUser(_firebaseUser!.uid);
       
       if (mounted) {
@@ -73,12 +80,11 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
           _userModel = userDoc;
           
           if (userDoc != null) {
-            // ⬇️ Firestoreにデータがある場合、そのユーザー名を表示
+            // Firestoreにデータがある場合
             _userNameController.text = userDoc.userName;
             _emailController.text = userDoc.email;
           } else {
-            // ⬇️ Firestoreにデータがない場合、Auth情報から補完
-            // displayName が null なら メールアドレスの @ 前を使う
+            // Firestoreにデータがない場合 (Auth情報から補完)
             _userNameController.text = _firebaseUser!.displayName ?? 
                                      _firebaseUser!.email?.split('@').first ?? 
                                      '';
@@ -87,8 +93,19 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
         });
       }
     } catch (e) {
+      // エラーが出ても画面は閉じず、メッセージだけ出す
       if (mounted) {
-        _showErrorSnackBar('データの読み込みに失敗しました: $e');
+        // _showErrorSnackBar('データの読み込みに失敗しました: $e'); 
+        // 初回などでデータがない場合のエラーは無視しても良い
+        print("ProfileSettings: データ読み込みエラー (正常な場合もあり) $e");
+        
+        // 最低限 Auth情報で埋める
+        setState(() {
+            _userNameController.text = _firebaseUser!.displayName ?? 
+                                     _firebaseUser!.email?.split('@').first ?? 
+                                     '';
+            _emailController.text = _firebaseUser!.email ?? '';
+        });
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -175,7 +192,7 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
         newImageUrl = await storageService.uploadImage(imageFile: _imageFile!, path: path);
       }
 
-      // 更新または新規作成するデータ
+      // 更新データ
       final String newUserName = _userNameController.text.trim();
       final String email = _emailController.text.trim();
 
@@ -188,7 +205,7 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
         );
         await firestoreService.updateUser(updatedUser);
       } else {
-        // 新規作成 (もし存在しなかった場合)
+        // 新規作成
         final newUser = UserModel(
           id: _firebaseUser!.uid,
           email: email.isNotEmpty ? email : (_firebaseUser!.email ?? ''),
@@ -201,14 +218,18 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
       }
       
       // AuthのDisplayName/PhotoURLも更新
-      await _firebaseUser!.updateDisplayName(newUserName);
-      if (newImageUrl != null) {
-        await _firebaseUser!.updatePhotoURL(newImageUrl);
+      try {
+        await _firebaseUser!.updateDisplayName(newUserName);
+        if (newImageUrl != null) {
+          await _firebaseUser!.updatePhotoURL(newImageUrl);
+        }
+      } catch (e) {
+        print("Auth profile update failed: $e");
       }
 
       _showSuccessSnackBar('プロフィールを更新しました');
       
-      // データを再ロードして画面を更新
+      // データを再ロード
       _loadUserData();
 
     } catch (e) {
@@ -223,7 +244,7 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
     if (_firebaseUser == null) return;
     final newEmail = _emailController.text.trim();
     
-    if (newEmail == _firebaseUser!.email) return; // 変更なし
+    if (newEmail == _firebaseUser!.email) return;
     if (newEmail.isEmpty || !newEmail.contains('@')) {
       _showErrorSnackBar('有効なメールアドレスを入力してください');
       return;
@@ -236,11 +257,9 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
     setState(() => _isLoading = true);
 
     try {
-      // 再認証
       final credential = EmailAuthProvider.credential(email: _firebaseUser!.email!, password: password);
       await _firebaseUser!.reauthenticateWithCredential(credential);
 
-      // メールアドレス更新 (Auth)
       await _firebaseUser!.verifyBeforeUpdateEmail(newEmail); 
       
       _showSuccessSnackBar('新しいメールアドレスに確認メールを送信しました。リンクをクリックして変更を完了してください。');
@@ -276,11 +295,9 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
     setState(() => _isLoading = true);
 
     try {
-      // 再認証
       final credential = EmailAuthProvider.credential(email: _firebaseUser!.email!, password: currentPassword);
       await _firebaseUser!.reauthenticateWithCredential(credential);
 
-      // パスワード更新
       await _firebaseUser!.updatePassword(_newPasswordController.text);
       
       _currentPasswordController.clear();
@@ -303,11 +320,9 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
     setState(() => _isLoading = true);
 
     try {
-      // 再認証
       final credential = EmailAuthProvider.credential(email: _firebaseUser!.email!, password: password);
       await _firebaseUser!.reauthenticateWithCredential(credential);
 
-      // アカウント削除
       await _firebaseUser!.delete();
 
       if (mounted) {

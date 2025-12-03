@@ -41,11 +41,11 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
     _userNameController = TextEditingController();
     _emailController = TextEditingController();
 
-    // ⬇️ --- 修正: 描画完了後にデータロードを実行 --- ⬇️
+    // ⬇️ --- 修正: 画面描画完了後にデータロードを実行 --- ⬇️
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadUserData();
     });
-    // ⬆️ ----------------------------------------- ⬆️
+    // ⬆️ --------------------------------------------- ⬆️
   }
 
   @override
@@ -65,7 +65,7 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
     _firebaseUser = authService.currentUser;
 
     if (_firebaseUser == null) {
-      // ここで Navigator.pop が呼ばれる可能性があるため、addPostFrameCallback が必要だった
+      // 描画完了後なので安全に pop できる
       Navigator.pop(context);
       return;
     }
@@ -93,10 +93,8 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
         });
       }
     } catch (e) {
-      // エラーが出ても画面は閉じず、メッセージだけ出す
+      // エラーが出ても画面は閉じず、ログだけ出す
       if (mounted) {
-        // _showErrorSnackBar('データの読み込みに失敗しました: $e'); 
-        // 初回などでデータがない場合のエラーは無視しても良い
         print("ProfileSettings: データ読み込みエラー (正常な場合もあり) $e");
         
         // 最低限 Auth情報で埋める

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:sizer/sizer.dart';
+import 'package:intl/intl.dart';
 
 import '../../core/app_export.dart';
 
@@ -22,19 +23,35 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   String? _otherUniversityName;
   String? _currentUserId;
   bool _isLoading = true;
+  
+  // ⬇️ 修正: 初期化フラグを追加 ⬇️
+  bool _didInit = false;
 
   @override
   void initState() {
     super.initState();
-    _initializeChat();
+    // _initializeChat(); // 👈 削除: ここで呼ぶとエラーになる
+  }
+
+  // ⬇️ 修正: didChangeDependencies で引数を取得する ⬇️
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_didInit) {
+      _initializeChat();
+      _didInit = true;
+    }
   }
 
   void _initializeChat() {
+    // ModalRoute はここで呼ぶのが正解
     final args =
         ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
     if (args != null) {
-      _otherCircleName = args['circleName'];
-      _otherUniversityName = args['universityName'];
+      setState(() {
+        _otherCircleName = args['circleName'];
+        _otherUniversityName = args['universityName'];
+      });
     }
 
     final authService = ref.read(firebaseAuthServiceProvider);
@@ -222,8 +239,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                     ? Theme.of(context).colorScheme.primary
                     : Theme.of(context).colorScheme.surfaceContainerHighest,
                 borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(16),
-                  topRight: Radius.circular(16),
+                  topLeft: const Radius.circular(16),
+                  topRight: const Radius.circular(16),
                   bottomLeft: Radius.circular(isOwnMessage ? 16 : 4),
                   bottomRight: Radius.circular(isOwnMessage ? 4 : 16),
                 ),
@@ -255,7 +272,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                     DateFormat('HH:mm').format(message.timestamp),
                     style: Theme.of(context).textTheme.labelSmall?.copyWith(
                           color: isOwnMessage
-                              ? Colors.white.withValues(alpha: 0.7)
+                              ? Colors.white.withOpacity(0.7)
                               : Theme.of(context).colorScheme.onSurfaceVariant,
                         ),
                   ),
@@ -287,7 +304,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         color: Theme.of(context).colorScheme.surface,
         border: Border(
           top: BorderSide(
-            color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2),
+            color: Theme.of(context).colorScheme.outline.withOpacity(0.2),
             width: 1,
           ),
         ),
@@ -442,4 +459,3 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     );
   }
 }
-

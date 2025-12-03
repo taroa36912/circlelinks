@@ -48,6 +48,7 @@ dependencies:
   google_sign_in: ^6.2.1
   flutter_line_sdk: ^2.6.1
   cloud_functions: ^6.0.3
+  rxdart: ^0.28.0
 
 dev_dependencies:
   flutter_test:    # CRITICAL: Required for Flutter project testing - DO NOT REMOVE

@@ -17,6 +17,9 @@ import '../presentation/dm_chat/dm_chat_screen.dart';
 import '../presentation/dm_list/dm_list_screen.dart'; 
 import '../core/models/circle_model.dart';
 import '../presentation/profile_settings/profile_settings_screen.dart';
+import '../presentation/event_management/event_management_screen.dart'; // New
+import '../presentation/event/qr_scan_screen.dart'; // New
+import '../presentation/profile/portfolio_screen.dart'; // New
 
 class AppRoutes {
   static const String initial = '/';
@@ -39,6 +42,9 @@ class AppRoutes {
   static const String circleManagement = '/circle-management';
   static const String circleDmList = '/circle-dm-list';
   static const String profileSettings = '/profile-settings';
+  static const String eventManagement = '/event-management'; // New
+  static const String qrScan = '/qr-scan'; // New
+  static const String portfolio = '/portfolio'; // New
 
   static const String circleAdmin = myCirclesList; 
 
@@ -81,6 +87,9 @@ class AppRoutes {
     profileSettings: (context) => const ProfileSettingsScreen(),
     eventCreation: (context) => const EventCreation(),
     eventDetails: (context) => const EventDetails(),
+    eventManagement: (context) => const EventManagementScreen(), // New
+    qrScan: (context) => const QRScanScreen(), // New
+    portfolio: (context) => const PortfolioScreen(), // New
     
     // ⬇️ --- 修正: connections ルートを追加 (引数を受け取る) --- ⬇️
     connections: (context) {

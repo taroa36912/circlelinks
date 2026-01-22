@@ -8,6 +8,8 @@ import '../models/message_model.dart';
 import '../models/dm_channel_model.dart';
 import '../models/dm_message_model.dart';
 import '../models/user_model.dart';
+import '../models/event_model.dart'; // New
+import '../models/attendance_model.dart'; // New
 
 class FirestoreService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -20,6 +22,8 @@ class FirestoreService {
   static const String dmChannelsCollection = 'dm_channels'; 
   static const String dmMessagesCollection = 'dm_messages';
   static const String usersCollection = 'users';
+  static const String eventsCollection = 'events'; // New
+  static const String attendancesCollection = 'attendances'; // New
   
   // --- User operations ---
   Future<void> createUser(UserModel user) async {
@@ -370,6 +374,122 @@ class FirestoreService {
       print("🔥 ERROR in sendDmMessage: $e");
       throw Exception('メッセージの送信に失敗しました: $e');
     }
+  }
+
+  // --- Event operations ---
+  Future<void> createEvent(EventModel event) async {
+    try {
+      await _firestore.collection(eventsCollection).doc(event.id).set(event.toFirestore());
+    } catch (e) {
+      print("🔥 ERROR in createEvent: $e");
+      throw Exception('イベントの作成に失敗しました: $e');
+    }
+  }
+
+  Future<void> updateEvent(EventModel event) async {
+    try {
+      await _firestore.collection(eventsCollection).doc(event.id).update(event.toFirestore());
+    } catch (e) {
+      print("🔥 ERROR in updateEvent: $e");
+      throw Exception('イベントの更新に失敗しました: $e');
+    }
+  }
+
+  Future<EventModel?> getEvent(String eventId) async {
+    try {
+      final doc = await _firestore.collection(eventsCollection).doc(eventId).get();
+      if (doc.exists) {
+        return EventModel.fromFirestore(doc);
+      }
+      return null;
+    } catch (e) {
+      print("🔥 ERROR in getEvent: $e");
+      throw Exception('イベントの取得に失敗しました: $e');
+    }
+  }
+
+  Stream<List<EventModel>> getEventsForCircle(String circleId) {
+    return _firestore
+        .collection(eventsCollection)
+        .where('circleId', isEqualTo: circleId)
+        .orderBy('startTime', descending: false)
+        .snapshots()
+        .handleError((e) {
+          print("🔥 ERROR in getEventsForCircle: $e");
+          throw e;
+        })
+        .map((snapshot) => snapshot.docs.map((doc) => EventModel.fromFirestore(doc)).toList());
+  }
+
+  Future<List<EventModel>> getUpcomingEvents() async {
+     try {
+      final now = DateTime.now();
+      final querySnapshot = await _firestore
+          .collection(eventsCollection)
+          .where('startTime', isGreaterThan: Timestamp.fromDate(now))
+          .orderBy('startTime')
+          .limit(20)
+          .get();
+      return querySnapshot.docs.map((doc) => EventModel.fromFirestore(doc)).toList();
+    } catch (e) {
+      print("🔥 ERROR in getUpcomingEvents: $e");
+      throw Exception('イベント一覧の取得に失敗しました: $e');
+    }
+  }
+
+  // --- Attendance operations ---
+  Future<void> rsvpEvent(AttendanceModel attendance) async {
+     try {
+       // Check if already exists to prevent overwrite status if needed, 
+       // but for simple RSVP upsert is usually fine or we check explicitly.
+       // Here we use set with merge true or just set.
+       await _firestore
+           .collection(eventsCollection)
+           .doc(attendance.eventId)
+           .collection(attendancesCollection)
+           .doc(attendance.userId)
+           .set(attendance.toFirestore());
+     } catch (e) {
+       print("🔥 ERROR in rsvpEvent: $e");
+       throw Exception('イベントへの参加登録に失敗しました: $e');
+     }
+  }
+
+  Future<void> markAttendance({
+    required String eventId,
+    required String userId,
+    required String scanData, // In case we want to validate a token later
+  }) async {
+    try {
+      // Direct update for now. 
+      // In real app, verify scanData matches logic.
+      final attendanceRef = _firestore
+           .collection(eventsCollection)
+           .doc(eventId)
+           .collection(attendancesCollection)
+           .doc(userId);
+      
+      await attendanceRef.update({
+        'status': 'attending', // Or 'checkedIn'
+        'checkedInAt': FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      print("🔥 ERROR in markAttendance: $e");
+      throw Exception('出席確認に失敗しました: $e');
+    }
+  }
+
+  Stream<List<AttendanceModel>> getEventAttendances(String eventId) {
+    return _firestore
+        .collection(eventsCollection)
+        .doc(eventId)
+        .collection(attendancesCollection)
+        .snapshots()
+         .handleError((e) {
+          print("🔥 ERROR in getEventAttendances: $e");
+          throw e;
+        })
+        .map((snapshot) => snapshot.docs.map((doc) => AttendanceModel.fromFirestore(doc)).toList());
   }
 }
 

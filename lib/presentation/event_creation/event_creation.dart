@@ -3,6 +3,9 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:sizer/sizer.dart';
 
 import '../../core/app_export.dart';
+import '../../core/models/event_model.dart';
+import '../../core/services/firestore_service.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import './widgets/advanced_options_section.dart';
 import './widgets/attendance_settings_section.dart';
 import './widgets/date_time_section.dart';
@@ -10,14 +13,16 @@ import './widgets/event_basics_section.dart';
 import './widgets/location_section.dart';
 import './widgets/payment_section.dart';
 
-class EventCreation extends StatefulWidget {
+import 'package:flutter_riverpod/flutter_riverpod.dart'; // Add this
+
+class EventCreation extends ConsumerStatefulWidget {
   const EventCreation({super.key});
 
   @override
-  State<EventCreation> createState() => _EventCreationState();
+  ConsumerState<EventCreation> createState() => _EventCreationState();
 }
 
-class _EventCreationState extends State<EventCreation> {
+class _EventCreationState extends ConsumerState<EventCreation> {
   final _scrollController = ScrollController();
   final _formKey = GlobalKey<FormState>();
 
@@ -45,6 +50,16 @@ class _EventCreationState extends State<EventCreation> {
 
   // UI State
   bool _isDraftSaved = false;
+  String? _circleId; // New
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+    if (args != null && args['circleId'] != null) {
+      _circleId = args['circleId'];
+    }
+  }
 
   @override
   void initState() {
@@ -275,10 +290,10 @@ class _EventCreationState extends State<EventCreation> {
   }
 
   Widget _buildSmartSuggestions() {
-    if (_selectedCategory.isEmpty) return const SizedBox.shrink();
+    if (_selectedCategory.isEmpty) return SizedBox.shrink();
 
     final suggestions = _getSmartSuggestions();
-    if (suggestions.isEmpty) return const SizedBox.shrink();
+    if (suggestions.isEmpty) return SizedBox.shrink();
 
     return Card(
       margin: EdgeInsets.symmetric(horizontal: 4.w, vertical: 1.h),
@@ -764,57 +779,65 @@ class _EventCreationState extends State<EventCreation> {
 
   Future<void> _createEvent() async {
     if (!_isFormValid()) return;
+    if (_circleId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Error: Circle ID missing')));
+      return;
+    }
 
     try {
-      // Simulate API call to create event
-      await Future.delayed(const Duration(seconds: 2));
+      setState(() => _isDraftSaved = true); // Show some loading state or repurpose this
 
-      // Show success message
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Row(
-            children: [
-              CustomIconWidget(
-                iconName: 'check_circle',
-                color: Colors.white,
-                size: 20,
-              ),
-              SizedBox(width: 2.w),
-              const Text('イベントが作成されました！'),
-            ],
-          ),
-          backgroundColor: AppTheme.success,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-        ),
+      final firestoreService = ref.read(firestoreServiceProvider);
+      
+      final newEvent = EventModel(
+        id: DateTime.now().millisecondsSinceEpoch.toString(), // Temporary ID generation, better to let Firestore gen or use uuid
+        circleId: _circleId!,
+        title: _titleController.text,
+        description: _descriptionController.text,
+        startTime: _getDateWithTime(_selectedDates.first, _startTime!),
+        endTime: _getDateWithTime(_selectedDates.first, _endTime!), // Assuming single date for simplicity for now
+        location: _locationController.text,
+        fee: _costPerPerson?.toInt() ?? 0,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
       );
 
-      // Navigate to event details
-      Navigator.pushReplacementNamed(context, '/event-details');
+      // Using the doc reference ID tactic is better
+      final docRef = FirebaseFirestore.instance.collection(FirestoreService.eventsCollection).doc();
+      final eventWithId = newEvent.copyWith(id: docRef.id);
+      
+      await firestoreService.createEvent(eventWithId);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.check_circle, color: Colors.white, size: 20),
+                SizedBox(width: 2.w),
+                const Text('イベントが作成されました！'),
+              ],
+            ),
+            backgroundColor: AppTheme.success,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        Navigator.pop(context); // Return to management screen
+      }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Row(
-            children: [
-              CustomIconWidget(
-                iconName: 'error',
-                color: Colors.white,
-                size: 20,
-              ),
-              SizedBox(width: 2.w),
-              const Text('エラーが発生しました。もう一度お試しください。'),
-            ],
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+             content: Text('イベント作成に失敗しました: $e'),
+             backgroundColor: Colors.red,
           ),
-          backgroundColor: AppTheme.error,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-        ),
-      );
-    } finally {
+        );
+      }
     }
   }
+
+  DateTime _getDateWithTime(DateTime date, TimeOfDay time) {
+    return DateTime(date.year, date.month, date.day, time.hour, time.minute);
+  }
+
 }

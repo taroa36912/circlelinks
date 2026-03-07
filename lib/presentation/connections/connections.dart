@@ -4,7 +4,13 @@ import 'package:sizer/sizer.dart';
 import '../../core/app_export.dart';
 
 class Connections extends ConsumerStatefulWidget {
-  const Connections({super.key});
+  // ⬇️ 引数でサークルIDを受け取るように変更 ⬇️
+  final String circleId; 
+
+  const Connections({
+    super.key,
+    required this.circleId,
+  });
 
   @override
   ConsumerState<Connections> createState() => _ConnectionsState();
@@ -13,23 +19,12 @@ class Connections extends ConsumerStatefulWidget {
 class _ConnectionsState extends ConsumerState<Connections>
     with TickerProviderStateMixin {
   late TabController _tabController;
-  String? _currentUserId;
+  // String? _currentUserId; // 👈 widget.circleId を使うので不要
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-    _getCurrentUser();
-  }
-
-  void _getCurrentUser() {
-    final authService = ref.read(firebaseAuthServiceProvider);
-    final user = authService.currentUser;
-    if (user != null) {
-      setState(() {
-        _currentUserId = user.uid;
-      });
-    }
   }
 
   @override
@@ -40,20 +35,17 @@ class _ConnectionsState extends ConsumerState<Connections>
 
   @override
   Widget build(BuildContext context) {
-    if (_currentUserId == null) {
+    // circleId が空ならエラー表示 (通常ありえない)
+    if (widget.circleId.isEmpty) {
       return Scaffold(
-        appBar: AppBar(
-          title: const Text('コネクション'),
-        ),
-        body: const Center(
-          child: Text('ログインが必要です'),
-        ),
+        appBar: AppBar(title: const Text('コネクション')),
+        body: const Center(child: Text('サークル情報がありません')),
       );
     }
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('コネクション'),
+        title: const Text('コネクション管理'), // タイトル変更
         backgroundColor: Theme.of(context).colorScheme.surface,
         foregroundColor: Theme.of(context).colorScheme.onSurface,
         elevation: 0,
@@ -75,14 +67,32 @@ class _ConnectionsState extends ConsumerState<Connections>
           _buildConnectedCirclesTab(),
         ],
       ),
+      // ⬇️ 新規追加: コネクションリクエスト送信ボタン ⬇️
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () {
+          // サークル一覧画面へ遷移 (選択モード)
+          Navigator.pushNamed(
+            context,
+            AppRoutes.circleDiscovery,
+            arguments: {
+              'isSelectionMode': true, // 選択モードフラグ
+              'sourceCircleId': widget.circleId, // リクエスト元サークルID
+            },
+          );
+        },
+        label: const Text('コネクションリクエスト'),
+        icon: const Icon(Icons.add_link),
+      ),
+      // ⬆️ ------------------------------------- ⬆️
     );
   }
 
   Widget _buildReceivedRequestsTab() {
     final firestoreService = ref.read(firestoreServiceProvider);
 
+    // widget.circleId を使用
     return StreamBuilder<List<ConnectionRequestModel>>(
-      stream: firestoreService.getReceivedConnectionRequests(_currentUserId!),
+      stream: firestoreService.getReceivedConnectionRequests(widget.circleId),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
@@ -141,8 +151,9 @@ class _ConnectionsState extends ConsumerState<Connections>
   Widget _buildConnectedCirclesTab() {
     final firestoreService = ref.read(firestoreServiceProvider);
 
+    // widget.circleId を使用
     return StreamBuilder<List<ConnectionRequestModel>>(
-      stream: firestoreService.getApprovedConnections(_currentUserId!),
+      stream: firestoreService.getApprovedConnections(widget.circleId),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
@@ -308,13 +319,18 @@ class _ConnectionsState extends ConsumerState<Connections>
           ),
         ),
         title: Text(
-          connection.fromCircleName,
+          // 自分から見た相手の名前を表示
+          (connection.fromCircleId == widget.circleId) 
+              ? connection.toCircleName 
+              : connection.fromCircleName,
           style: Theme.of(context).textTheme.titleMedium?.copyWith(
                 fontWeight: FontWeight.w600,
               ),
         ),
         subtitle: Text(
-          connection.fromUniversityName,
+           (connection.fromCircleId == widget.circleId) 
+              ? connection.toUniversityName 
+              : connection.fromUniversityName,
           style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                 color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
@@ -384,15 +400,19 @@ class _ConnectionsState extends ConsumerState<Connections>
   }
 
   void _openChat(ConnectionRequestModel connection) {
+    // 相手の情報を特定
+    final isMeFrom = connection.fromCircleId == widget.circleId;
+    final targetCircleName = isMeFrom ? connection.toCircleName : connection.fromCircleName;
+    final targetUniversityName = isMeFrom ? connection.toUniversityName : connection.fromUniversityName;
+
     Navigator.pushNamed(
       context,
       '/chat',
       arguments: {
         'connectionId': connection.id,
-        'circleName': connection.fromCircleName,
-        'universityName': connection.fromUniversityName,
+        'circleName': targetCircleName,
+        'universityName': targetUniversityName,
       },
     );
   }
 }
-

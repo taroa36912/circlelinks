@@ -1,11 +1,15 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:rxdart/rxdart.dart'; // 👈 1. 新規追加
+
 import '../models/circle_model.dart';
 import '../models/connection_request_model.dart';
 import '../models/message_model.dart';
 import '../models/dm_channel_model.dart';
 import '../models/dm_message_model.dart';
 import '../models/user_model.dart';
+import '../models/event_model.dart'; // New
+import '../models/attendance_model.dart'; // New
 
 class FirestoreService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -18,8 +22,10 @@ class FirestoreService {
   static const String dmChannelsCollection = 'dm_channels'; 
   static const String dmMessagesCollection = 'dm_messages';
   static const String usersCollection = 'users';
+  static const String eventsCollection = 'events'; // New
+  static const String attendancesCollection = 'attendances'; // New
   
-  // ⬇️ --- 新規追加: ユーザー管理機能 --- ⬇️
+  // --- User operations ---
   Future<void> createUser(UserModel user) async {
     try {
       await _firestore.collection(usersCollection).doc(user.id).set(user.toFirestore());
@@ -28,7 +34,6 @@ class FirestoreService {
       throw Exception('ユーザーの作成に失敗しました: $e');
     }
   }
-
   Future<UserModel?> getUser(String userId) async {
     try {
       final doc = await _firestore.collection(usersCollection).doc(userId).get();
@@ -41,7 +46,6 @@ class FirestoreService {
       throw Exception('ユーザー情報の取得に失敗しました: $e');
     }
   }
-
   Future<void> updateUser(UserModel user) async {
     try {
       await _firestore.collection(usersCollection).doc(user.id).update(user.toFirestore());
@@ -50,18 +54,16 @@ class FirestoreService {
       throw Exception('ユーザー情報の更新に失敗しました: $e');
     }
   }
-  // ⬆️ --- 新規追加ここまで --- ⬆️
 
   // --- Circle operations ---
   Future<void> createCircle(CircleModel circle) async {
     try {
       await _firestore.collection(circlesCollection).doc(circle.id).set(circle.toFirestore());
     } catch (e) {
-      print("🔥 ERROR in createCircle: $e"); // デバッグ出力
+      print("🔥 ERROR in createCircle: $e"); 
       throw Exception('サークルの作成に失敗しました: $e');
     }
   }
-
   Future<CircleModel?> getCircle(String circleId) async {
     try {
       final doc = await _firestore.collection(circlesCollection).doc(circleId).get();
@@ -70,25 +72,23 @@ class FirestoreService {
       }
       return null;
     } catch (e) {
-      print("🔥 ERROR in getCircle: $e"); // デバッグ出力
+      print("🔥 ERROR in getCircle: $e"); 
       throw Exception('サークルの取得に失敗しました: $e');
     }
   }
-
   Stream<List<CircleModel>> getCirclesStream() {
     return _firestore
         .collection(circlesCollection)
         .orderBy('createdAt', descending: true)
         .snapshots()
-        .handleError((e) { // 👈 ストリームのエラーを捕捉
-          print("🔥 ERROR in getCirclesStream: $e"); // ログに出力
-          throw e; // エラーを再スローしてUIにも伝える
+        .handleError((e) {
+          print("🔥 ERROR in getCirclesStream: $e"); 
+          throw e; 
         })
         .map((snapshot) {
       return snapshot.docs.map((doc) => CircleModel.fromFirestore(doc)).toList();
     });
   }
-
   Future<List<CircleModel>> searchCircles(String query) async {
     try {
       final querySnapshot = await _firestore
@@ -102,7 +102,6 @@ class FirestoreService {
       throw Exception('サークルの検索に失敗しました: $e');
     }
   }
-
   Future<List<CircleModel>> getCirclesByUniversity(String universityName) async {
     try {
       final querySnapshot = await _firestore.collection(circlesCollection).where('universityName', isEqualTo: universityName).get();
@@ -112,7 +111,6 @@ class FirestoreService {
       throw Exception('大学別サークル取得に失敗しました: $e');
     }
   }
-
   Future<void> updateCircle(CircleModel circle) async {
     try {
       await _firestore
@@ -124,14 +122,13 @@ class FirestoreService {
       throw Exception('サークル情報の更新に失敗しました: $e');
     }
   }
-
   Stream<List<CircleModel>> getMyCircles(String userId) {
     return _firestore
         .collection(circlesCollection)
         .where('userId', isEqualTo: userId)
         .orderBy('createdAt', descending: true)
         .snapshots()
-        .handleError((e) { // 👈 エラー捕捉
+        .handleError((e) {
           print("🔥 ERROR in getMyCircles: $e"); 
           throw e;
         })
@@ -158,7 +155,7 @@ class FirestoreService {
         .where('status', isEqualTo: 'pending')
         .orderBy('createdAt', descending: true)
         .snapshots()
-        .handleError((e) { // 👈 エラー捕捉
+        .handleError((e) {
           print("🔥 ERROR in getReceivedConnectionRequests: $e");
           throw e;
         })
@@ -175,7 +172,7 @@ class FirestoreService {
         .where('fromCircleId', isEqualTo: circleId)
         .orderBy('createdAt', descending: true)
         .snapshots()
-        .handleError((e) { // 👈 エラー捕捉
+        .handleError((e) {
           print("🔥 ERROR in getSentConnectionRequests: $e");
           throw e;
         })
@@ -186,22 +183,42 @@ class FirestoreService {
     });
   }
 
+  // ⬇️ --- 修正: 受信と送信の両方を結合して返す --- ⬇️
   Stream<List<ConnectionRequestModel>> getApprovedConnections(String circleId) {
-    return _firestore
+    // 1. 自分宛てのリクエスト (Approved)
+    final receivedStream = _firestore
         .collection(connectionRequestsCollection)
         .where('toCircleId', isEqualTo: circleId) 
         .where('status', isEqualTo: 'approved')
         .snapshots()
-        .handleError((e) { // 👈 エラー捕捉
-          print("🔥 ERROR in getApprovedConnections: $e");
-          throw e;
-        })
-        .map((snapshot) {
-      return snapshot.docs
-          .map((doc) => ConnectionRequestModel.fromFirestore(doc))
-          .toList();
+        .map((snapshot) => snapshot.docs
+            .map((doc) => ConnectionRequestModel.fromFirestore(doc))
+            .toList());
+            
+    // 2. 自分発のリクエスト (Approved)
+    final sentStream = _firestore
+        .collection(connectionRequestsCollection)
+        .where('fromCircleId', isEqualTo: circleId) 
+        .where('status', isEqualTo: 'approved')
+        .snapshots()
+        .map((snapshot) => snapshot.docs
+            .map((doc) => ConnectionRequestModel.fromFirestore(doc))
+            .toList());
+
+    // 3. 2つのストリームを結合 (CombineLatest)
+    return Rx.combineLatest2(
+      receivedStream,
+      sentStream,
+      (List<ConnectionRequestModel> received, List<ConnectionRequestModel> sent) {
+        // リストを結合
+        return [...received, ...sent];
+      },
+    ).handleError((e) {
+       print("🔥 ERROR in getApprovedConnections: $e");
+       throw e;
     });
   }
+  // ⬆️ --- 修正ここまで --- ⬆️
 
   Future<void> updateConnectionRequestStatus(String requestId, ConnectionStatus status) async {
     try {
@@ -214,7 +231,6 @@ class FirestoreService {
       throw Exception('コネクションリクエストの更新に失敗しました: $e');
     }
   }
-
   Future<void> deleteConnectionRequest(String requestId) async {
     try {
       await _firestore.collection(connectionRequestsCollection).doc(requestId).delete();
@@ -223,8 +239,9 @@ class FirestoreService {
       throw Exception('コネクションリクエストの削除に失敗しました: $e');
     }
   }
-
+  
   // --- Chat operations ---
+  // ... (sendMessage, getMessagesStream, createChat 変更なし) ...
   Future<void> sendMessage(MessageModel message) async {
     try {
       await _firestore.collection(chatsCollection).doc(message.chatId).collection(messagesCollection).add(message.toFirestore());
@@ -233,23 +250,14 @@ class FirestoreService {
       throw Exception('メッセージの送信に失敗しました: $e');
     }
   }
-
   Stream<List<MessageModel>> getMessagesStream(String chatId) {
-    return _firestore
-        .collection(chatsCollection)
-        .doc(chatId)
-        .collection(messagesCollection)
-        .orderBy('timestamp', descending: false)
-        .snapshots()
-        .handleError((e) { // 👈 エラー捕捉
+    return _firestore.collection(chatsCollection).doc(chatId).collection(messagesCollection).orderBy('timestamp', descending: false).snapshots().handleError((e) {
           print("🔥 ERROR in getMessagesStream: $e");
           throw e;
-        })
-        .map((snapshot) {
+        }).map((snapshot) {
       return snapshot.docs.map((doc) => MessageModel.fromFirestore(doc)).toList();
     });
   }
-
   Future<void> createChat(String connectionId, Map<String, String> participants) async {
     try {
       await _firestore.collection(chatsCollection).doc(connectionId).set({
@@ -265,6 +273,7 @@ class FirestoreService {
   }
 
   // --- DM機能 ---
+  // ... (getOrCreateDmChannel, getDmChannelsForCircle, getDmChannelsForIndividual, getDmMessagesStream, sendDmMessage 変更なし) ...
   Future<String> getOrCreateDmChannel({
     required String individualId,
     required String circleId,
@@ -280,7 +289,6 @@ class FirestoreService {
         final data = doc.data();
         return data['circleId'] == circleId && data['individualId'] == individualId;
       }).toList();
-
       if (existingChannels.isNotEmpty) {
         return existingChannels.first.id;
       } else {
@@ -301,41 +309,38 @@ class FirestoreService {
         return newChannelRef.id;
       }
     } catch (e) {
-      print("🔥 ERROR in getOrCreateDmChannel: $e"); // デバッグ出力
+      print("🔥 ERROR in getOrCreateDmChannel: $e"); 
       rethrow;
     }
   }
-
   Stream<List<DmChannelModel>> getDmChannelsForCircle(String circleId) {
     return _firestore
         .collection(dmChannelsCollection)
         .where('circleId', isEqualTo: circleId) 
         .orderBy('lastMessageTimestamp', descending: true)
         .snapshots()
-        .handleError((e) { // 👈 エラー捕捉
-          print("🔥 ERROR in getDmChannelsForCircle: $e"); // ログに詳細を出力
+        .handleError((e) {
+          print("🔥 ERROR in getDmChannelsForCircle: $e");
           throw e;
         })
         .map((snapshot) => snapshot.docs
             .map((doc) => DmChannelModel.fromFirestore(doc))
             .toList());
   }
-
   Stream<List<DmChannelModel>> getDmChannelsForIndividual(String individualId) {
     return _firestore
         .collection(dmChannelsCollection)
         .where('individualId', isEqualTo: individualId) 
         .orderBy('lastMessageTimestamp', descending: true)
         .snapshots()
-        .handleError((e) { // 👈 エラー捕捉
-          print("🔥 ERROR in getDmChannelsForIndividual: $e"); // ログに詳細を出力
+        .handleError((e) {
+          print("🔥 ERROR in getDmChannelsForIndividual: $e");
           throw e;
         })
         .map((snapshot) => snapshot.docs
             .map((doc) => DmChannelModel.fromFirestore(doc))
             .toList());
   }
-
   Stream<List<DmMessageModel>> getDmMessagesStream(String channelId) {
     return _firestore
         .collection(dmChannelsCollection)
@@ -343,7 +348,7 @@ class FirestoreService {
         .collection(dmMessagesCollection)
         .orderBy('timestamp', descending: false)
         .snapshots()
-        .handleError((e) { // 👈 エラー捕捉
+        .handleError((e) {
           print("🔥 ERROR in getDmMessagesStream: $e");
           throw e;
         })
@@ -351,7 +356,6 @@ class FirestoreService {
             .map((doc) => DmMessageModel.fromFirestore(doc))
             .toList());
   }
-  
   Future<void> sendDmMessage({
     required String channelId,
     required DmMessageModel message,
@@ -372,6 +376,121 @@ class FirestoreService {
     }
   }
 
+  // --- Event operations ---
+  Future<void> createEvent(EventModel event) async {
+    try {
+      await _firestore.collection(eventsCollection).doc(event.id).set(event.toFirestore());
+    } catch (e) {
+      print("🔥 ERROR in createEvent: $e");
+      throw Exception('イベントの作成に失敗しました: $e');
+    }
+  }
+
+  Future<void> updateEvent(EventModel event) async {
+    try {
+      await _firestore.collection(eventsCollection).doc(event.id).update(event.toFirestore());
+    } catch (e) {
+      print("🔥 ERROR in updateEvent: $e");
+      throw Exception('イベントの更新に失敗しました: $e');
+    }
+  }
+
+  Future<EventModel?> getEvent(String eventId) async {
+    try {
+      final doc = await _firestore.collection(eventsCollection).doc(eventId).get();
+      if (doc.exists) {
+        return EventModel.fromFirestore(doc);
+      }
+      return null;
+    } catch (e) {
+      print("🔥 ERROR in getEvent: $e");
+      throw Exception('イベントの取得に失敗しました: $e');
+    }
+  }
+
+  Stream<List<EventModel>> getEventsForCircle(String circleId) {
+    return _firestore
+        .collection(eventsCollection)
+        .where('circleId', isEqualTo: circleId)
+        .orderBy('startTime', descending: false)
+        .snapshots()
+        .handleError((e) {
+          print("🔥 ERROR in getEventsForCircle: $e");
+          throw e;
+        })
+        .map((snapshot) => snapshot.docs.map((doc) => EventModel.fromFirestore(doc)).toList());
+  }
+
+  Future<List<EventModel>> getUpcomingEvents() async {
+     try {
+      final now = DateTime.now();
+      final querySnapshot = await _firestore
+          .collection(eventsCollection)
+          .where('startTime', isGreaterThan: Timestamp.fromDate(now))
+          .orderBy('startTime')
+          .limit(20)
+          .get();
+      return querySnapshot.docs.map((doc) => EventModel.fromFirestore(doc)).toList();
+    } catch (e) {
+      print("🔥 ERROR in getUpcomingEvents: $e");
+      throw Exception('イベント一覧の取得に失敗しました: $e');
+    }
+  }
+
+  // --- Attendance operations ---
+  Future<void> rsvpEvent(AttendanceModel attendance) async {
+     try {
+       // Check if already exists to prevent overwrite status if needed, 
+       // but for simple RSVP upsert is usually fine or we check explicitly.
+       // Here we use set with merge true or just set.
+       await _firestore
+           .collection(eventsCollection)
+           .doc(attendance.eventId)
+           .collection(attendancesCollection)
+           .doc(attendance.userId)
+           .set(attendance.toFirestore());
+     } catch (e) {
+       print("🔥 ERROR in rsvpEvent: $e");
+       throw Exception('イベントへの参加登録に失敗しました: $e');
+     }
+  }
+
+  Future<void> markAttendance({
+    required String eventId,
+    required String userId,
+    required String scanData, // In case we want to validate a token later
+  }) async {
+    try {
+      // Direct update for now. 
+      // In real app, verify scanData matches logic.
+      final attendanceRef = _firestore
+           .collection(eventsCollection)
+           .doc(eventId)
+           .collection(attendancesCollection)
+           .doc(userId);
+      
+      await attendanceRef.update({
+        'status': 'attending', // Or 'checkedIn'
+        'checkedInAt': FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      print("🔥 ERROR in markAttendance: $e");
+      throw Exception('出席確認に失敗しました: $e');
+    }
+  }
+
+  Stream<List<AttendanceModel>> getEventAttendances(String eventId) {
+    return _firestore
+        .collection(eventsCollection)
+        .doc(eventId)
+        .collection(attendancesCollection)
+        .snapshots()
+         .handleError((e) {
+          print("🔥 ERROR in getEventAttendances: $e");
+          throw e;
+        })
+        .map((snapshot) => snapshot.docs.map((doc) => AttendanceModel.fromFirestore(doc)).toList());
+  }
 }
 
 final firestoreServiceProvider = Provider<FirestoreService>((ref) {

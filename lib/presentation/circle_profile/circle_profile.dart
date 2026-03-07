@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:sizer/sizer.dart';
 
 import '../../core/app_export.dart';
+import '../../core/models/connection_request_model.dart'; // ConnectionRequestModel
 
 class CircleProfile extends ConsumerStatefulWidget {
   const CircleProfile({super.key});
@@ -20,6 +21,12 @@ class _CircleProfileState extends ConsumerState<CircleProfile>
   
   User? _currentUser;
   bool _isOwner = false; 
+
+  // ⬇️ --- 新規: モード管理用 --- ⬇️
+  bool _isSelectionMode = false;
+  String? _sourceCircleId; // リクエスト元のサークルID
+  CircleModel? _sourceCircle; // リクエスト元のサークル情報
+  // ⬆️ ----------------------- ⬆️
 
   @override
   void initState() {
@@ -46,21 +53,33 @@ class _CircleProfileState extends ConsumerState<CircleProfile>
       return;
     }
 
-    final args =
-        ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+    final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
     if (args == null || args['circleId'] == null) {
       setState(() { _isLoading = false; });
       return; 
     }
     _circleId = args['circleId'] as String;
     
+    // ⬇️ --- 引数からモード情報を取得 --- ⬇️
+    _isSelectionMode = args['isSelectionMode'] ?? false;
+    _sourceCircleId = args['sourceCircleId'];
+    // ⬆️ ---------------------------- ⬆️
+
     if (_currentUser!.uid == _circleId) {
       setState(() { _isOwner = true; });
     }
 
     final firestoreService = ref.read(firestoreServiceProvider);
-    
-    // 自分のサークル情報の取得処理は削除しました
+
+    // ⬇️ 選択モードなら、送信元サークルの情報を取得しておく (リクエストデータ作成用) ⬇️
+    if (_isSelectionMode && _sourceCircleId != null) {
+      try {
+        _sourceCircle = await firestoreService.getCircle(_sourceCircleId!);
+      } catch (e) {
+        print("送信元サークル情報の取得失敗: $e");
+      }
+    }
+    // ⬆️ --------------------------------------------------------------- ⬆️
 
     await _fetchCircle(firestoreService);
   }
@@ -102,21 +121,15 @@ class _CircleProfileState extends ConsumerState<CircleProfile>
     if (_isLoading) {
       return Scaffold(
         backgroundColor: AppTheme.lightTheme.colorScheme.surface,
-        body: const Center(
-          child: CircularProgressIndicator(),
-        ),
+        body: const Center(child: CircularProgressIndicator()),
       );
     }
 
     if (_circle == null) {
       return Scaffold(
         backgroundColor: AppTheme.lightTheme.colorScheme.surface,
-        appBar: AppBar(
-          title: const Text('サークルプロフィール'),
-        ),
-        body: const Center(
-          child: Text('サークルが見つかりません'),
-        ),
+        appBar: AppBar(title: const Text('サークルプロフィール')),
+        body: const Center(child: Text('サークルが見つかりません')),
       );
     }
 
@@ -140,10 +153,7 @@ class _CircleProfileState extends ConsumerState<CircleProfile>
                   fit: StackFit.expand,
                   children: [
                     if (_circle!.coverImageUrl != null)
-                      Image.network(
-                        _circle!.coverImageUrl!,
-                        fit: BoxFit.cover,
-                      )
+                      Image.network(_circle!.coverImageUrl!, fit: BoxFit.cover)
                     else
                       Container(
                         decoration: BoxDecoration(
@@ -162,10 +172,7 @@ class _CircleProfileState extends ConsumerState<CircleProfile>
                         gradient: LinearGradient(
                           begin: Alignment.topCenter,
                           end: Alignment.bottomCenter,
-                          colors: [
-                            Colors.transparent,
-                            Colors.black.withOpacity(0.7),
-                          ],
+                          colors: [Colors.transparent, Colors.black.withOpacity(0.7)],
                         ),
                       ),
                     ),
@@ -183,7 +190,6 @@ class _CircleProfileState extends ConsumerState<CircleProfile>
         },
         body: Column(
           children: [
-            // Tab Bar
             Container(
               color: AppTheme.lightTheme.colorScheme.surface,
               child: TabBar(
@@ -192,44 +198,51 @@ class _CircleProfileState extends ConsumerState<CircleProfile>
                 indicatorColor: AppTheme.lightTheme.colorScheme.primary,
                 indicatorWeight: 3,
                 labelColor: AppTheme.lightTheme.colorScheme.primary,
-                unselectedLabelColor:
-                    AppTheme.lightTheme.colorScheme.onSurfaceVariant,
-                labelStyle: AppTheme.lightTheme.textTheme.titleSmall?.copyWith(
-                  fontWeight: FontWeight.w600,
-                ),
-                unselectedLabelStyle:
-                    AppTheme.lightTheme.textTheme.titleSmall?.copyWith(
-                  fontWeight: FontWeight.w400,
-                ),
-                tabs: const [
-                  Tab(text: "About"),
-                  Tab(text: "Contact"),
-                ],
+                unselectedLabelColor: AppTheme.lightTheme.colorScheme.onSurfaceVariant,
+                labelStyle: AppTheme.lightTheme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
+                unselectedLabelStyle: AppTheme.lightTheme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w400),
+                tabs: const [Tab(text: "About"), Tab(text: "Contact")],
               ),
             ),
-            // Tab Views
             Expanded(
               child: TabBarView(
                 controller: _tabController,
-                children: [
-                  _buildAboutTab(),
-                  _buildContactTab(),
-                ],
+                children: [_buildAboutTab(), _buildContactTab()],
               ),
             ),
           ],
         ),
       ),
-      floatingActionButton: _isOwner // 自分のプロフィールならFABは表示しない
-          ? null 
-          : FloatingActionButton.extended(
-              onPressed: _handleSendDm, 
-              label: const Text('DMを送信'),
-              icon: const Icon(Icons.message_outlined),
-            ),
+      // ⬇️ --- FAB のロジック変更 --- ⬇️
+      floatingActionButton: _buildFloatingActionButton(),
+      // ⬆️ --------------------- ⬆️
     );
   }
 
+  Widget? _buildFloatingActionButton() {
+    // オーナーなら何も表示しない (編集ボタンなどを置く場所)
+    if (_isOwner) return null;
+
+    // 選択モードなら「リクエスト送信」ボタン
+    if (_isSelectionMode) {
+      return FloatingActionButton.extended(
+        onPressed: _handleSendConnectionRequest,
+        label: const Text('リクエスト送信'),
+        icon: const Icon(Icons.send),
+        backgroundColor: Colors.orange, // 色を変えて区別
+        foregroundColor: Colors.white,
+      );
+    }
+
+    // 通常モードなら「DMを送信」ボタン
+    return FloatingActionButton.extended(
+      onPressed: _handleSendDm,
+      label: const Text('DMを送信'),
+      icon: const Icon(Icons.message_outlined),
+    );
+  }
+
+  // ... ( _buildAboutTab, _buildContactTab は変更なし) ...
   Widget _buildAboutTab() {
     return SingleChildScrollView(
       padding: EdgeInsets.all(4.w),
@@ -305,7 +318,6 @@ class _CircleProfileState extends ConsumerState<CircleProfile>
       ),
     );
   }
-
   Widget _buildContactTab() {
     return SingleChildScrollView(
       padding: EdgeInsets.all(4.w),
@@ -349,11 +361,60 @@ class _CircleProfileState extends ConsumerState<CircleProfile>
     );
   }
 
+  // ⬇️ --- サークル間コネクションリクエスト送信ロジック --- ⬇️
+  Future<void> _handleSendConnectionRequest() async {
+    if (_circle == null || _sourceCircleId == null || _sourceCircle == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('情報が不足しているためリクエストを送信できません')),
+      );
+      return;
+    }
+
+    try {
+      final firestoreService = ref.read(firestoreServiceProvider);
+
+      // コネクションリクエストモデルの作成
+      final request = ConnectionRequestModel(
+        id: '', // Firestoreで自動生成される
+        fromCircleId: _sourceCircleId!,
+        toCircleId: _circle!.id,
+        fromCircleName: _sourceCircle!.circleName,
+        toCircleName: _circle!.circleName,
+        fromUniversityName: _sourceCircle!.universityName,
+        toUniversityName: _circle!.universityName,
+        status: ConnectionStatus.pending,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
+
+      await firestoreService.sendConnectionRequest(request);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('コネクションリクエストを送信しました！'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        // 送信後は一覧画面に戻る
+        Navigator.pop(context); // プロフィールを閉じる
+        Navigator.pop(context); // 一覧選択画面を閉じる
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('リクエスト送信に失敗しました: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+  // ⬆️ ---------------------------------------------- ⬆️
+
   Future<void> _handleSendDm() async {
+    // ... (既存の個人DMロジック。変更なし) ...
     if (_currentUser == null || _circle == null) return;
 
-    // 個人としての情報を設定
-    // UserModelは未実装のため、Auth情報から名前を生成
     final String individualName = _currentUser!.displayName ?? 
                                 _currentUser!.email?.split('@').first ?? 
                                 'ゲストユーザー';
@@ -383,7 +444,6 @@ class _CircleProfileState extends ConsumerState<CircleProfile>
           arguments: {
             'dmChannelId': channelId,
             'recipientName': circleName,
-            // 'isCircleAdmin': false, // この引数は DmChatScreen が対応していない場合は不要
           },
         );
       }
@@ -403,44 +463,22 @@ class _CircleProfileState extends ConsumerState<CircleProfile>
       context: context,
       backgroundColor: Colors.transparent,
       builder: (context) => Container(
-        decoration: BoxDecoration(
-          color: AppTheme.lightTheme.colorScheme.surface,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-        ),
+        decoration: BoxDecoration(color: AppTheme.lightTheme.colorScheme.surface, borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Container(
-              width: 40,
-              height: 4,
-              margin: EdgeInsets.symmetric(vertical: 2.h),
-              decoration: BoxDecoration(
-                color: AppTheme.lightTheme.colorScheme.outline,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
+            Container(width: 40, height: 4, margin: EdgeInsets.symmetric(vertical: 2.h), decoration: BoxDecoration(color: AppTheme.lightTheme.colorScheme.outline, borderRadius: BorderRadius.circular(2),),),
             Padding(
               padding: EdgeInsets.all(4.w),
               child: Column(
                 children: [
-                  Text(
-                    "サークルをシェア",
-                    style: AppTheme.lightTheme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
+                  Text("サークルをシェア", style: AppTheme.lightTheme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600,),),
                   SizedBox(height: 3.h),
                   SingleChildScrollView( 
                     scrollDirection: Axis.horizontal,
                     child: Row(
                       children: [
-                        _buildShareOption("link", "リンクをコピー"),
-                        SizedBox(width: 4.w), 
-                        _buildShareOption("message", "メッセージ"),
-                        SizedBox(width: 4.w), 
-                        _buildShareOption("email", "メール"),
-                        SizedBox(width: 4.w), 
-                        _buildShareOption("more_horiz", "その他"),
+                        _buildShareOption("link", "リンクをコピー"), SizedBox(width: 4.w), _buildShareOption("message", "メッセージ"), SizedBox(width: 4.w), _buildShareOption("email", "メール"), SizedBox(width: 4.w), _buildShareOption("more_horiz", "その他"),
                       ],
                     ),
                   ),
@@ -458,36 +496,13 @@ class _CircleProfileState extends ConsumerState<CircleProfile>
     return GestureDetector(
       onTap: () {
         Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("$label でシェアしました")),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("$label でシェアしました")),);
       },
       child: Column(
         children: [
-          Container(
-            width: 14.w,
-            height: 14.w,
-            decoration: BoxDecoration(
-              color: AppTheme.lightTheme.colorScheme.primaryContainer,
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: CustomIconWidget(
-              iconName: iconName,
-              color: AppTheme.lightTheme.colorScheme.onPrimaryContainer,
-              size: 24,
-            ),
-          ),
+          Container(width: 14.w, height: 14.w, decoration: BoxDecoration(color: AppTheme.lightTheme.colorScheme.primaryContainer, borderRadius: BorderRadius.circular(16),), child: CustomIconWidget(iconName: iconName, color: AppTheme.lightTheme.colorScheme.onPrimaryContainer, size: 24,),),
           SizedBox(height: 1.h),
-          SizedBox( 
-            width: 14.w, 
-            child: Text(
-              label,
-              style: AppTheme.lightTheme.textTheme.bodySmall,
-              textAlign: TextAlign.center, 
-              maxLines: 2, 
-              overflow: TextOverflow.ellipsis, 
-            ),
-          ),
+          SizedBox( width: 14.w, child: Text(label, style: AppTheme.lightTheme.textTheme.bodySmall, textAlign: TextAlign.center, maxLines: 2, overflow: TextOverflow.ellipsis,),),
         ],
       ),
     );

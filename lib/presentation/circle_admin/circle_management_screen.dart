@@ -25,7 +25,6 @@ class _CircleManagementScreenState extends ConsumerState<CircleManagementScreen>
   @override
   void initState() {
     super.initState();
-    // 初期値をセット
     _circleNameController = TextEditingController(text: widget.circle.circleName);
     _descriptionController = TextEditingController(text: widget.circle.description);
     _memberCountController = TextEditingController(text: widget.circle.memberCount.toString());
@@ -45,7 +44,6 @@ class _CircleManagementScreenState extends ConsumerState<CircleManagementScreen>
     setState(() { _isLoading = true; });
 
     try {
-      // 更新データを作成 (copyWithを使用)
       final updatedCircle = widget.circle.copyWith(
         circleName: _circleNameController.text.trim(),
         description: _descriptionController.text.trim(),
@@ -60,7 +58,7 @@ class _CircleManagementScreenState extends ConsumerState<CircleManagementScreen>
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('サークル情報を更新しました')),
         );
-        Navigator.pop(context); // 一覧に戻る
+        Navigator.pop(context); 
       }
     } catch (e) {
       if (mounted) {
@@ -90,12 +88,33 @@ class _CircleManagementScreenState extends ConsumerState<CircleManagementScreen>
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // ⬇️ --- 新規追加: サークル間コネクションボタン --- ⬇️
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: () {
+                    // コネクション管理画面へ遷移 (circleIdを渡す)
+                    Navigator.pushNamed(
+                      context,
+                      AppRoutes.connections,
+                      arguments: {'circleId': widget.circle.id}, // 👈 自分のサークルIDを渡す
+                    );
+                  },
+                  icon: const Icon(Icons.people_outline),
+                  label: const Text('サークル間コネクション管理'),
+                  style: OutlinedButton.styleFrom(
+                    padding: EdgeInsets.symmetric(vertical: 1.5.h),
+                  ),
+                ),
+              ),
+              SizedBox(height: 2.h),
+              // ⬆️ ------------------------------------------- ⬆️
+
               // --- DMへの導線 ---
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton.icon(
                   onPressed: () {
-                    // このサークルのDM一覧へ遷移
                     Navigator.pushNamed(
                       context,
                       AppRoutes.circleDmList,
@@ -122,7 +141,6 @@ class _CircleManagementScreenState extends ConsumerState<CircleManagementScreen>
               ),
               SizedBox(height: 3.h),
 
-              // サークル名
               TextFormField(
                 controller: _circleNameController,
                 decoration: const InputDecoration(labelText: 'サークル名'),
@@ -130,7 +148,6 @@ class _CircleManagementScreenState extends ConsumerState<CircleManagementScreen>
               ),
               SizedBox(height: 2.h),
 
-              // メンバー数
               TextFormField(
                 controller: _memberCountController,
                 decoration: const InputDecoration(labelText: 'メンバー数'),
@@ -138,7 +155,6 @@ class _CircleManagementScreenState extends ConsumerState<CircleManagementScreen>
               ),
               SizedBox(height: 2.h),
 
-              // 説明文
               TextFormField(
                 controller: _descriptionController,
                 decoration: const InputDecoration(labelText: '活動内容'),
@@ -147,7 +163,6 @@ class _CircleManagementScreenState extends ConsumerState<CircleManagementScreen>
 
               SizedBox(height: 4.h),
 
-              // 保存ボタン
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(

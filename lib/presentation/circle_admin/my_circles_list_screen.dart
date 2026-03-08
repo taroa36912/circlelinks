@@ -41,6 +41,14 @@ class _MyCirclesListScreenState extends ConsumerState<MyCirclesListScreen> {
         elevation: 0,
       ),
       body: _buildCircleList(theme),
+      
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () {
+          Navigator.pushNamed(context, AppRoutes.circleRegistration);
+        },
+        icon: const Icon(Icons.add),
+        label: const Text('新規サークル作成'),
+      ),
     );
   }
 
@@ -69,7 +77,6 @@ class _MyCirclesListScreenState extends ConsumerState<MyCirclesListScreen> {
                 const Text('管理しているサークルがありません'),
                 TextButton(
                   onPressed: () {
-                    // サークル登録画面へ
                     Navigator.pushNamed(context, AppRoutes.circleRegistration);
                   },
                   child: const Text('サークルを新規登録する'),
@@ -105,11 +112,10 @@ class _MyCirclesListScreenState extends ConsumerState<MyCirclesListScreen> {
                 subtitle: Text(circle.universityName),
                 trailing: const Icon(Icons.arrow_forward_ios, size: 16),
                 onTap: () {
-                  // 個別の管理画面へ遷移
                   Navigator.pushNamed(
                     context,
                     AppRoutes.circleManagement,
-                    arguments: {'circle': circle}, // CircleModel全体を渡す
+                    arguments: {'circle': circle},
                   );
                 },
               ),

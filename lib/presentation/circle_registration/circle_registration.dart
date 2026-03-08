@@ -234,6 +234,8 @@ class _CircleRegistrationState extends ConsumerState<CircleRegistration> {
         String? coverImageUrl;
         String? verificationDocumentUrl;
 
+        final newCircleId = FirebaseFirestore.instance.collection('circles').doc().id;
+
         if (kIsWeb) {
           // --- Web ---
           if (_profileImageBytes != null) {
@@ -266,7 +268,7 @@ class _CircleRegistrationState extends ConsumerState<CircleRegistration> {
 
         // Create circle document
         final circle = CircleModel(
-          id: userId, // 👈 AuthのUIDをサークルのIDとして使用
+          id: newCircleId,  
           userId: userId, // 👈 AuthのUID
           email: userEmail, // 👈 Authから取得したEmail
           universityName: _universityController.text,

@@ -1,0 +1,45 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isCircleAdmin(circleId) {
+      return isAuthenticated() &&
+        exists(/databases/$(database)/documents/circles/$(circleId)/members/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/circles/$(circleId)/members/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    match /{path=**}/members/{memberId} {
+      allow read: if isAuthenticated();
+    }
+
+    match /circles/{circleId} {
+      // Anyone authenticated can view circle information
+      allow read: if isAuthenticated();
+      
+      // Allow creation by any authenticated user
+      // Assuming batch creation sets the user as admin in the subcollection
+      allow create: if isAuthenticated();
+      
+      // Updates and deletions require the user to be an admin of this circle
+      allow update, delete: if isCircleAdmin(circleId);
+
+      // Sub-collection for members
+      match /members/{memberId} {
+        allow read: if isAuthenticated();
+        allow write: if isCircleAdmin(circleId);
+      }
+    }
+
+    // Example user rules
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Add other collections as needed...
+  }
+}

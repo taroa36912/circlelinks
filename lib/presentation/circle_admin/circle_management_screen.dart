@@ -5,6 +5,8 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:image_picker/image_picker.dart';
 import 'package:sizer/sizer.dart';
 import '../../core/app_export.dart';
+import '../../core/models/member_model.dart';
+import '../../core/models/user_model.dart';
 
 class CircleManagementScreen extends ConsumerStatefulWidget {
   final CircleModel circle;
@@ -15,16 +17,18 @@ class CircleManagementScreen extends ConsumerStatefulWidget {
   });
 
   @override
-  ConsumerState<CircleManagementScreen> createState() => _CircleManagementScreenState();
+  ConsumerState<CircleManagementScreen> createState() =>
+      _CircleManagementScreenState();
 }
 
-class _CircleManagementScreenState extends ConsumerState<CircleManagementScreen> {
+class _CircleManagementScreenState
+    extends ConsumerState<CircleManagementScreen> {
   final _formKey = GlobalKey<FormState>();
   late TextEditingController _circleNameController;
   late TextEditingController _descriptionController;
   late TextEditingController _memberCountController;
   late TextEditingController _universityController;
-  
+
   String? _selectedCategory;
   bool _isLoading = false;
 
@@ -45,11 +49,15 @@ class _CircleManagementScreenState extends ConsumerState<CircleManagementScreen>
   @override
   void initState() {
     super.initState();
-    _circleNameController = TextEditingController(text: widget.circle.circleName);
-    _descriptionController = TextEditingController(text: widget.circle.description);
-    _memberCountController = TextEditingController(text: widget.circle.memberCount.toString());
-    _universityController = TextEditingController(text: widget.circle.universityName);
-    
+    _circleNameController =
+        TextEditingController(text: widget.circle.circleName);
+    _descriptionController =
+        TextEditingController(text: widget.circle.description);
+    _memberCountController =
+        TextEditingController(text: widget.circle.memberCount.toString());
+    _universityController =
+        TextEditingController(text: widget.circle.universityName);
+
     // カテゴリの初期値設定（リストにない場合は 'Other' にする）
     _selectedCategory = widget.circle.category;
     if (!_categories.contains(_selectedCategory)) {
@@ -70,8 +78,9 @@ class _CircleManagementScreenState extends ConsumerState<CircleManagementScreen>
   Future<void> _pickImage({required bool isProfile}) async {
     try {
       final picker = ImagePicker();
-      final pickedFile = await picker.pickImage(source: ImageSource.gallery, imageQuality: 80);
-      
+      final pickedFile =
+          await picker.pickImage(source: ImageSource.gallery, imageQuality: 80);
+
       if (pickedFile != null) {
         final bytes = await pickedFile.readAsBytes();
         setState(() {
@@ -86,7 +95,8 @@ class _CircleManagementScreenState extends ConsumerState<CircleManagementScreen>
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('画像の選択に失敗しました'), backgroundColor: Colors.red),
+        const SnackBar(
+            content: Text('画像の選択に失敗しました'), backgroundColor: Colors.red),
       );
     }
   }
@@ -95,7 +105,9 @@ class _CircleManagementScreenState extends ConsumerState<CircleManagementScreen>
   Future<void> _updateCircle() async {
     if (!_formKey.currentState!.validate()) return;
 
-    setState(() { _isLoading = true; });
+    setState(() {
+      _isLoading = true;
+    });
 
     try {
       final storageService = ref.read(firebaseStorageServiceProvider);
@@ -106,20 +118,28 @@ class _CircleManagementScreenState extends ConsumerState<CircleManagementScreen>
 
       // 1. プロフィール画像のアップロード
       if (kIsWeb && _profileImageBytes != null) {
-        final path = storageService.generateImagePath(widget.circle.id, 'profile');
-        profileImageUrl = await storageService.uploadImage(bytes: _profileImageBytes!, path: path);
+        final path =
+            storageService.generateImagePath(widget.circle.id, 'profile');
+        profileImageUrl = await storageService.uploadImage(
+            bytes: _profileImageBytes!, path: path);
       } else if (!kIsWeb && _profileImageFile != null) {
-        final path = storageService.generateImagePath(widget.circle.id, 'profile');
-        profileImageUrl = await storageService.uploadImage(imageFile: _profileImageFile!, path: path);
+        final path =
+            storageService.generateImagePath(widget.circle.id, 'profile');
+        profileImageUrl = await storageService.uploadImage(
+            imageFile: _profileImageFile!, path: path);
       }
 
       // 2. カバー画像のアップロード
       if (kIsWeb && _coverImageBytes != null) {
-        final path = storageService.generateImagePath(widget.circle.id, 'cover');
-        coverImageUrl = await storageService.uploadImage(bytes: _coverImageBytes!, path: path);
+        final path =
+            storageService.generateImagePath(widget.circle.id, 'cover');
+        coverImageUrl = await storageService.uploadImage(
+            bytes: _coverImageBytes!, path: path);
       } else if (!kIsWeb && _coverImageFile != null) {
-        final path = storageService.generateImagePath(widget.circle.id, 'cover');
-        coverImageUrl = await storageService.uploadImage(imageFile: _coverImageFile!, path: path);
+        final path =
+            storageService.generateImagePath(widget.circle.id, 'cover');
+        coverImageUrl = await storageService.uploadImage(
+            imageFile: _coverImageFile!, path: path);
       }
 
       // 3. データの更新
@@ -138,9 +158,10 @@ class _CircleManagementScreenState extends ConsumerState<CircleManagementScreen>
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('サークル情報を更新しました'), backgroundColor: Colors.green),
+          const SnackBar(
+              content: Text('サークル情報を更新しました'), backgroundColor: Colors.green),
         );
-        Navigator.pop(context); 
+        Navigator.pop(context);
       }
     } catch (e) {
       if (mounted) {
@@ -149,8 +170,100 @@ class _CircleManagementScreenState extends ConsumerState<CircleManagementScreen>
         );
       }
     } finally {
-      if (mounted) setState(() { _isLoading = false; });
+      if (mounted)
+        setState(() {
+          _isLoading = false;
+        });
     }
+  }
+
+  Widget _buildMemberManagementSection(ThemeData theme) {
+    final firestoreService = ref.read(firestoreServiceProvider);
+
+    return StreamBuilder<List<MemberModel>>(
+      stream: firestoreService.getCircleMembersStream(widget.circle.id),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (snapshot.hasError) {
+          return Center(child: Text('エラーが発生しました: ${snapshot.error}'));
+        }
+
+        final members = snapshot.data ?? [];
+        if (members.isEmpty) {
+          return const Center(child: Text('メンバーがいません'));
+        }
+
+        return ListView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: members.length,
+          itemBuilder: (context, index) {
+            final member = members[index];
+            return FutureBuilder<UserModel?>(
+              future: firestoreService.getUser(member.userId),
+              builder: (context, userSnapshot) {
+                final user = userSnapshot.data;
+                final userName = user?.userName ?? '読み込み中...';
+                final profileUrl = user?.profileImageUrl;
+
+                return Card(
+                  elevation: 1,
+                  margin: EdgeInsets.only(bottom: 1.h),
+                  child: ListTile(
+                    leading: CircleAvatar(
+                      backgroundImage:
+                          profileUrl != null ? NetworkImage(profileUrl) : null,
+                      child:
+                          profileUrl == null ? const Icon(Icons.person) : null,
+                    ),
+                    title: Text(userName,
+                        style: const TextStyle(fontWeight: FontWeight.bold)),
+                    subtitle: Text(member.role == 'admin' ? '管理者' : 'メンバー'),
+                    trailing: PopupMenuButton<String>(
+                      onSelected: (value) async {
+                        try {
+                          if (value == 'toggle_role') {
+                            final newRole =
+                                member.role == 'admin' ? 'member' : 'admin';
+                            await firestoreService.updateCircleMemberRole(
+                                widget.circle.id, member.userId, newRole);
+                          } else if (value == 'remove') {
+                            await firestoreService.removeCircleMember(
+                                widget.circle.id, member.userId);
+                          }
+                        } catch (e) {
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                  content: Text('操作に失敗しました: $e'),
+                                  backgroundColor: Colors.red),
+                            );
+                          }
+                        }
+                      },
+                      itemBuilder: (context) => [
+                        PopupMenuItem(
+                          value: 'toggle_role',
+                          child: Text(
+                              member.role == 'admin' ? 'メンバーに変更' : '管理者に変更'),
+                        ),
+                        const PopupMenuItem(
+                          value: 'remove',
+                          child:
+                              Text('削除', style: TextStyle(color: Colors.red)),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            );
+          },
+        );
+      },
+    );
   }
 
   @override
@@ -175,11 +288,13 @@ class _CircleManagementScreenState extends ConsumerState<CircleManagementScreen>
                 width: double.infinity,
                 child: OutlinedButton.icon(
                   onPressed: () {
-                    Navigator.pushNamed(context, AppRoutes.connections, arguments: {'circleId': widget.circle.id});
+                    Navigator.pushNamed(context, AppRoutes.connections,
+                        arguments: {'circleId': widget.circle.id});
                   },
                   icon: const Icon(Icons.people_outline),
                   label: const Text('サークル間コネクション管理'),
-                  style: OutlinedButton.styleFrom(padding: EdgeInsets.symmetric(vertical: 1.5.h)),
+                  style: OutlinedButton.styleFrom(
+                      padding: EdgeInsets.symmetric(vertical: 1.5.h)),
                 ),
               ),
               SizedBox(height: 2.h),
@@ -187,7 +302,8 @@ class _CircleManagementScreenState extends ConsumerState<CircleManagementScreen>
                 width: double.infinity,
                 child: ElevatedButton.icon(
                   onPressed: () {
-                    Navigator.pushNamed(context, AppRoutes.circleDmList, arguments: {'circleId': widget.circle.id});
+                    Navigator.pushNamed(context, AppRoutes.circleDmList,
+                        arguments: {'circleId': widget.circle.id});
                   },
                   icon: const Icon(Icons.mail_outline),
                   label: const Text('このサークルへのDMを確認する'),
@@ -198,15 +314,28 @@ class _CircleManagementScreenState extends ConsumerState<CircleManagementScreen>
                   ),
                 ),
               ),
-              
+
               SizedBox(height: 4.h),
               const Divider(),
               SizedBox(height: 2.h),
-              Text('画像の設定', style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
+              Text('メンバー管理',
+                  style: theme.textTheme.titleLarge
+                      ?.copyWith(fontWeight: FontWeight.bold)),
+              SizedBox(height: 2.h),
+              _buildMemberManagementSection(theme),
+
+              SizedBox(height: 4.h),
+              const Divider(),
+              SizedBox(height: 2.h),
+              Text('画像の設定',
+                  style: theme.textTheme.titleLarge
+                      ?.copyWith(fontWeight: FontWeight.bold)),
               SizedBox(height: 2.h),
 
               // --- カバー画像の設定 ---
-              Text('カバー画像', style: theme.textTheme.bodyMedium?.copyWith(color: Colors.grey)),
+              Text('カバー画像',
+                  style:
+                      theme.textTheme.bodyMedium?.copyWith(color: Colors.grey)),
               SizedBox(height: 1.h),
               GestureDetector(
                 onTap: () => _pickImage(isProfile: false),
@@ -217,22 +346,35 @@ class _CircleManagementScreenState extends ConsumerState<CircleManagementScreen>
                     color: theme.colorScheme.surfaceContainerHighest,
                     borderRadius: BorderRadius.circular(12),
                     image: _coverImageBytes != null
-                        ? DecorationImage(image: MemoryImage(_coverImageBytes!), fit: BoxFit.cover)
+                        ? DecorationImage(
+                            image: MemoryImage(_coverImageBytes!),
+                            fit: BoxFit.cover)
                         : (_coverImageFile != null
-                            ? DecorationImage(image: FileImage(_coverImageFile!), fit: BoxFit.cover)
+                            ? DecorationImage(
+                                image: FileImage(_coverImageFile!),
+                                fit: BoxFit.cover)
                             : (widget.circle.coverImageUrl != null
-                                ? DecorationImage(image: NetworkImage(widget.circle.coverImageUrl!), fit: BoxFit.cover)
+                                ? DecorationImage(
+                                    image: NetworkImage(
+                                        widget.circle.coverImageUrl!),
+                                    fit: BoxFit.cover)
                                 : null)),
                   ),
-                  child: (_coverImageBytes == null && _coverImageFile == null && widget.circle.coverImageUrl == null)
-                      ? const Center(child: Icon(Icons.add_photo_alternate, size: 50, color: Colors.grey))
+                  child: (_coverImageBytes == null &&
+                          _coverImageFile == null &&
+                          widget.circle.coverImageUrl == null)
+                      ? const Center(
+                          child: Icon(Icons.add_photo_alternate,
+                              size: 50, color: Colors.grey))
                       : null,
                 ),
               ),
               SizedBox(height: 3.h),
 
               // --- プロフィール画像の設定 ---
-              Text('プロフィール画像', style: theme.textTheme.bodyMedium?.copyWith(color: Colors.grey)),
+              Text('プロフィール画像',
+                  style:
+                      theme.textTheme.bodyMedium?.copyWith(color: Colors.grey)),
               SizedBox(height: 1.h),
               GestureDetector(
                 onTap: () => _pickImage(isProfile: true),
@@ -244,9 +386,12 @@ class _CircleManagementScreenState extends ConsumerState<CircleManagementScreen>
                       : (_profileImageFile != null
                           ? FileImage(_profileImageFile!)
                           : (widget.circle.profileImageUrl != null
-                              ? NetworkImage(widget.circle.profileImageUrl!) as ImageProvider
+                              ? NetworkImage(widget.circle.profileImageUrl!)
+                                  as ImageProvider
                               : null)),
-                  child: (_profileImageBytes == null && _profileImageFile == null && widget.circle.profileImageUrl == null)
+                  child: (_profileImageBytes == null &&
+                          _profileImageFile == null &&
+                          widget.circle.profileImageUrl == null)
                       ? Icon(Icons.group, size: 12.w, color: Colors.grey)
                       : null,
                 ),
@@ -255,7 +400,9 @@ class _CircleManagementScreenState extends ConsumerState<CircleManagementScreen>
               SizedBox(height: 4.h),
               const Divider(),
               SizedBox(height: 2.h),
-              Text('基本情報の編集', style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
+              Text('基本情報の編集',
+                  style: theme.textTheme.titleLarge
+                      ?.copyWith(fontWeight: FontWeight.bold)),
               SizedBox(height: 3.h),
 
               TextFormField(
@@ -276,7 +423,8 @@ class _CircleManagementScreenState extends ConsumerState<CircleManagementScreen>
                 value: _selectedCategory,
                 decoration: const InputDecoration(labelText: 'カテゴリー'),
                 items: _categories.map((category) {
-                  return DropdownMenuItem(value: category, child: Text(category));
+                  return DropdownMenuItem(
+                      value: category, child: Text(category));
                 }).toList(),
                 onChanged: (value) {
                   setState(() {
@@ -309,7 +457,11 @@ class _CircleManagementScreenState extends ConsumerState<CircleManagementScreen>
                     padding: EdgeInsets.symmetric(vertical: 2.h),
                   ),
                   child: _isLoading
-                      ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                              strokeWidth: 2, color: Colors.white))
                       : const Text('変更を保存'),
                 ),
               ),

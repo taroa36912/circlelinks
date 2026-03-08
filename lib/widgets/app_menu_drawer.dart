@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:sizer/sizer.dart';
-import '../../core/app_export.dart'; 
+import '../../core/app_export.dart';
 import '../../routes/app_routes.dart';
 import '../../core/models/user_model.dart';
 
@@ -24,21 +24,26 @@ class _AppMenuDrawerState extends ConsumerState<AppMenuDrawer> {
   }
 
   Future<void> _loadUserData() async {
-    setState(() { _isLoading = true; });
-    
+    setState(() {
+      _isLoading = true;
+    });
+
     final authService = ref.read(firebaseAuthServiceProvider);
     final user = authService.currentUser;
     if (user == null) {
-      setState(() { _isLoading = false; });
+      setState(() {
+        _isLoading = false;
+      });
       if (mounted) {
-        Navigator.of(context).pushNamedAndRemoveUntil(AppRoutes.login, (route) => false);
+        Navigator.of(context)
+            .pushNamedAndRemoveUntil(AppRoutes.login, (route) => false);
       }
       return;
     }
     _currentUser = user;
 
     final firestoreService = ref.read(firestoreServiceProvider);
-    
+
     try {
       // エラーになっても止まらないように個別にtry-catchするか、null許容で進める
       // ここでは getUser や getCircle が失敗してもメニュー自体は開けるようにする
@@ -49,19 +54,21 @@ class _AppMenuDrawerState extends ConsumerState<AppMenuDrawer> {
 
       CircleModel? circleData;
       try {
-        circleData = await firestoreService.getCircle(user.uid); 
+        circleData = await firestoreService.getCircle(user.uid);
       } catch (_) {}
 
       if (mounted) {
         setState(() {
           _myUserData = userData;
-          _myCircleData = circleData; 
+          _myCircleData = circleData;
           _isLoading = false;
         });
       }
     } catch (e) {
       if (mounted) {
-        setState(() { _isLoading = false; });
+        setState(() {
+          _isLoading = false;
+        });
       }
       print("Drawer: データ取得エラー $e");
     }
@@ -73,8 +80,7 @@ class _AppMenuDrawerState extends ConsumerState<AppMenuDrawer> {
       await authService.signOut();
       if (mounted) {
         Navigator.of(context).pushNamedAndRemoveUntil(
-          AppRoutes.login, (Route<dynamic> route) => false
-        );
+            AppRoutes.login, (Route<dynamic> route) => false);
       }
     } catch (e) {
       if (mounted) {
@@ -98,24 +104,25 @@ class _AppMenuDrawerState extends ConsumerState<AppMenuDrawer> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    
+
     final bool hasCircle = _myCircleData != null;
-    final String displayName = _myUserData?.userName ?? _currentUser?.email ?? 'ゲスト';
+    final String displayName =
+        _myUserData?.userName ?? _currentUser?.email ?? 'ゲスト';
     final String? profileImageUrl = _myUserData?.profileImageUrl;
 
     return Drawer(
-      width: 75.w, 
+      width: 75.w,
       child: ListView(
         padding: EdgeInsets.zero,
         children: [
           _buildDrawerHeader(theme, displayName, profileImageUrl, hasCircle),
-          
+
           if (_isLoading) ...[
             const Padding(
               padding: EdgeInsets.all(16.0),
               child: Center(child: CircularProgressIndicator()),
             )
-          ] else ...[            
+          ] else ...[
             // --- メッセージ ---
             _buildMenuSection(theme, "メッセージ"),
             _buildMenuItem(
@@ -124,7 +131,7 @@ class _AppMenuDrawerState extends ConsumerState<AppMenuDrawer> {
               title: "DM一覧",
               onTap: () {
                 Navigator.pop(context);
-                Navigator.pushNamed(context, AppRoutes.dmList); 
+                Navigator.pushNamed(context, AppRoutes.dmList);
               },
             ),
 
@@ -132,10 +139,10 @@ class _AppMenuDrawerState extends ConsumerState<AppMenuDrawer> {
             _buildMenuSection(theme, "サークル機能"),
             _buildMenuItem(
               theme,
-              icon: Icons.admin_panel_settings_outlined, 
+              icon: Icons.admin_panel_settings_outlined,
               title: "サークル管理",
               onTap: () {
-                Navigator.pop(context); 
+                Navigator.pop(context);
                 Navigator.pushNamed(context, AppRoutes.myCirclesList);
               },
             ),
@@ -143,15 +150,18 @@ class _AppMenuDrawerState extends ConsumerState<AppMenuDrawer> {
               theme,
               icon: Icons.group_outlined,
               title: "所属サークル一覧",
-              onTap: _showComingSoonSnackBar,
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.pushNamed(context, AppRoutes.joinedCircles);
+              },
             ),
             _buildMenuItem(
               theme,
               icon: Icons.work_outline,
               title: "Myポートフォリオ",
               onTap: () {
-                Navigator.pop(context); 
-                Navigator.pushNamed(context, AppRoutes.portfolioBuilder); 
+                Navigator.pop(context);
+                Navigator.pushNamed(context, AppRoutes.portfolioBuilder);
               },
             ),
             _buildMenuItem(
@@ -159,12 +169,12 @@ class _AppMenuDrawerState extends ConsumerState<AppMenuDrawer> {
               icon: Icons.add_circle_outline,
               title: "イベント作成",
               onTap: () {
-                Navigator.pop(context); 
+                Navigator.pop(context);
                 Navigator.pushNamed(context, AppRoutes.eventCreation);
               },
             ),
           ],
-          
+
           const Divider(),
 
           // --- アカウントと設定 (共通) ---
@@ -174,8 +184,8 @@ class _AppMenuDrawerState extends ConsumerState<AppMenuDrawer> {
             icon: Icons.account_circle_outlined,
             title: "プロフィール設定",
             onTap: () {
-              Navigator.pop(context); 
-              Navigator.pushNamed(context, AppRoutes.profileSettings);            
+              Navigator.pop(context);
+              Navigator.pushNamed(context, AppRoutes.profileSettings);
             },
           ),
           _buildMenuItem(
@@ -184,7 +194,7 @@ class _AppMenuDrawerState extends ConsumerState<AppMenuDrawer> {
             title: "通知設定",
             onTap: _showComingSoonSnackBar,
           ),
-          
+
           _buildMenuSection(theme, "サポート"),
           _buildMenuItem(
             theme,
@@ -192,7 +202,7 @@ class _AppMenuDrawerState extends ConsumerState<AppMenuDrawer> {
             title: "ヘルプ & サポート",
             onTap: _showComingSoonSnackBar,
           ),
-          
+
           const Divider(),
 
           _buildMenuItem(
@@ -207,7 +217,8 @@ class _AppMenuDrawerState extends ConsumerState<AppMenuDrawer> {
     );
   }
 
-  Widget _buildDrawerHeader(ThemeData theme, String displayName, String? profileImageUrl, bool hasCircle) {
+  Widget _buildDrawerHeader(ThemeData theme, String displayName,
+      String? profileImageUrl, bool hasCircle) {
     return UserAccountsDrawerHeader(
       accountName: Text(
         displayName,
@@ -224,26 +235,27 @@ class _AppMenuDrawerState extends ConsumerState<AppMenuDrawer> {
       ),
       currentAccountPicture: CircleAvatar(
         backgroundColor: theme.colorScheme.onPrimary,
-        backgroundImage: (profileImageUrl != null) ? NetworkImage(profileImageUrl) : null,
-        child: (profileImageUrl == null) 
-          ? Icon(
-              // サークル未作成の場合はアカウントアイコン、作成済みの場合はグループアイコン
-              hasCircle ? Icons.group_outlined : Icons.person_outline, 
-              size: 40,
-              color: theme.colorScheme.primary,
-            ) 
-          : null,
+        backgroundImage:
+            (profileImageUrl != null) ? NetworkImage(profileImageUrl) : null,
+        child: (profileImageUrl == null)
+            ? Icon(
+                // サークル未作成の場合はアカウントアイコン、作成済みの場合はグループアイコン
+                hasCircle ? Icons.group_outlined : Icons.person_outline,
+                size: 40,
+                color: theme.colorScheme.primary,
+              )
+            : null,
       ),
       decoration: BoxDecoration(
         color: theme.colorScheme.primary,
       ),
       onDetailsPressed: () {
-        Navigator.pop(context); 
+        Navigator.pop(context);
         Navigator.pushNamed(context, AppRoutes.profileSettings);
       },
     );
   }
-  
+
   Widget _buildMenuSection(ThemeData theme, String title) {
     return Padding(
       padding: EdgeInsets.fromLTRB(4.w, 3.h, 4.w, 1.h),
@@ -258,13 +270,15 @@ class _AppMenuDrawerState extends ConsumerState<AppMenuDrawer> {
     );
   }
 
-  Widget _buildMenuItem(ThemeData theme, {
+  Widget _buildMenuItem(
+    ThemeData theme, {
     required IconData icon,
     required String title,
     required VoidCallback onTap,
     bool isDestructive = false,
   }) {
-    final color = isDestructive ? theme.colorScheme.error : theme.colorScheme.onSurface;
+    final color =
+        isDestructive ? theme.colorScheme.error : theme.colorScheme.onSurface;
     return ListTile(
       leading: Icon(icon, color: color, size: 24),
       title: Text(
@@ -274,9 +288,10 @@ class _AppMenuDrawerState extends ConsumerState<AppMenuDrawer> {
           fontWeight: FontWeight.w500,
         ),
       ),
-      trailing: (isDestructive || icon == Icons.logout) 
-        ? null 
-        : Icon(Icons.arrow_forward_ios, size: 16, color: theme.colorScheme.onSurfaceVariant),
+      trailing: (isDestructive || icon == Icons.logout)
+          ? null
+          : Icon(Icons.arrow_forward_ios,
+              size: 16, color: theme.colorScheme.onSurfaceVariant),
       onTap: onTap,
     );
   }

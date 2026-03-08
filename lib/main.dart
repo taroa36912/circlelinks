@@ -1,8 +1,9 @@
+import 'dart:io' show Platform;
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:sizer/sizer.dart';
 import 'package:flutter_line_sdk/flutter_line_sdk.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
 
 import '../core/app_export.dart';
 import '../widgets/custom_error_widget.dart';
@@ -17,7 +18,7 @@ void main() async {
   );
 
   
-  if (!kIsWeb) { 
+  if (!kIsWeb && (Platform.isIOS || Platform.isAndroid)) { 
     try {
       await LineSDK.instance.setup("2008357841"); 
     } catch (e) {

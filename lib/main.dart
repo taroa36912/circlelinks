@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:sizer/sizer.dart';
 import 'package:flutter_line_sdk/flutter_line_sdk.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../core/app_export.dart';
 import '../widgets/custom_error_widget.dart';
@@ -17,6 +18,10 @@ void main() async {
     options: DefaultFirebaseOptions.currentPlatform,
   );
 
+  await Supabase.initialize(
+    url: 'https://hynvsvxoonoytskfsqlx.supabase.co',
+    anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh5bnZzdnhvb25veXRza2ZzcWx4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI5NjUwMDQsImV4cCI6MjA4ODU0MTAwNH0.92jOQ0-rcp6ZLShdUc3A5xRu5W5qjGvTPM7doZt8ftU',
+  );
   
   if (!kIsWeb && (Platform.isIOS || Platform.isAndroid)) { 
     try {

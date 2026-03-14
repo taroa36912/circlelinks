@@ -85,9 +85,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
   }
 
   Future<void> _handleLogin(String email, String password) async {
-    FocusScope.of(context).unfocus(); 
+    FocusScope.of(context).unfocus();
 
-    setState(() { _isLoading = true; });
+    setState(() {
+      _isLoading = true;
+    });
 
     try {
       final authService = ref.read(firebaseAuthServiceProvider);
@@ -97,11 +99,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
       );
       HapticFeedback.lightImpact();
       if (mounted) {
-        setState(() { _isLoading = false; });
-        Navigator.pushReplacementNamed(context, AppRoutes.circleDiscovery); // 修正
+        setState(() {
+          _isLoading = false;
+        });
+        Navigator.pushReplacementNamed(
+            context, AppRoutes.circleDiscovery); // 修正
       }
     } catch (e) {
-      setState(() { _isLoading = false; });
+      setState(() {
+        _isLoading = false;
+      });
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -120,15 +127,21 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
       }
     } finally {
       if (mounted && _isLoading) {
-        setState(() { _isLoading = false; });
+        setState(() {
+          _isLoading = false;
+        });
       }
     }
   }
 
   Future<void> _handleGoogleLogin() async {
-    FocusScope.of(context).unfocus(); 
+    // 多重実行防止: ローディング中は何もしない
+    if (_isLoading) return;
+    FocusScope.of(context).unfocus();
 
-    setState(() { _isLoading = true; });
+    setState(() {
+      _isLoading = true;
+    });
 
     try {
       final authService = ref.read(firebaseAuthServiceProvider);
@@ -137,14 +150,21 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
       if (userCredential != null) {
         HapticFeedback.lightImpact();
         if (mounted) {
-           setState(() { _isLoading = false; });
-           Navigator.pushReplacementNamed(context, AppRoutes.circleDiscovery); // 修正
+          setState(() {
+            _isLoading = false;
+          });
+          Navigator.pushReplacementNamed(
+              context, AppRoutes.circleDiscovery); // 修正
         }
       } else {
-        setState(() { _isLoading = false; });
+        setState(() {
+          _isLoading = false;
+        });
       }
     } catch (e) {
-      setState(() { _isLoading = false; });
+      setState(() {
+        _isLoading = false;
+      });
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -162,51 +182,64 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
         );
       }
     } finally {
-       if (mounted && _isLoading) {
-         setState(() { _isLoading = false; });
-       }
+      if (mounted && _isLoading) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
   Future<void> _handleLineLogin() async {
-    FocusScope.of(context).unfocus(); 
+    FocusScope.of(context).unfocus();
 
-    setState(() { _isLoading = true; });
-    
+    setState(() {
+      _isLoading = true;
+    });
+
     try {
       final authService = ref.read(firebaseAuthServiceProvider);
-      final userCredential = await authService.signInWithLine(); 
+      final userCredential = await authService.signInWithLine();
 
       if (userCredential != null) {
-        HapticFeedback.lightImpact(); 
+        HapticFeedback.lightImpact();
         if (mounted) {
-          setState(() { _isLoading = false; });
-          Navigator.pushReplacementNamed(context, AppRoutes.circleDiscovery); // 修正
+          setState(() {
+            _isLoading = false;
+          });
+          Navigator.pushReplacementNamed(
+              context, AppRoutes.circleDiscovery); // 修正
         }
       } else {
-        setState(() { _isLoading = false; });
+        setState(() {
+          _isLoading = false;
+        });
       }
     } catch (e) {
-      setState(() { _isLoading = false; });
+      setState(() {
+        _isLoading = false;
+      });
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('LINEログインに失敗しました: $e'),
             backgroundColor: AppTheme.lightTheme.colorScheme.error,
-             action: SnackBarAction(
-               label: '閉じる',
-               textColor: Colors.white,
-               onPressed: () {
-                 ScaffoldMessenger.of(context).hideCurrentSnackBar();
-               },
-             ),
+            action: SnackBarAction(
+              label: '閉じる',
+              textColor: Colors.white,
+              onPressed: () {
+                ScaffoldMessenger.of(context).hideCurrentSnackBar();
+              },
+            ),
           ),
         );
       }
     } finally {
-       if (mounted && _isLoading) {
-         setState(() { _isLoading = false; });
-       }
+      if (mounted && _isLoading) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -221,7 +254,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
 
   void _navigateToSignUp() {
     // ⬇️ --- 修正 --- ⬇️
-    Navigator.pushNamed(context, AppRoutes.signup); // '/circle-registration' から '/signup' へ
+    Navigator.pushNamed(
+        context, AppRoutes.signup); // '/circle-registration' から '/signup' へ
     // ⬆️ --- 修正 --- ⬆️
   }
 
@@ -346,7 +380,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                               opacity: _formOpacityAnimation,
                               child: SocialLoginWidget(
                                 onGoogleLogin: _handleGoogleLogin,
-                                onLineLogin: _handleLineLogin, 
+                                onLineLogin: _handleLineLogin,
                               ),
                             ),
                           );
@@ -411,15 +445,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                   ),
                 ),
               ),
-            
-             // Loading Indicator Overlay
-             if (_isLoading)
-               Container(
-                 color: Colors.black.withOpacity(0.3),
-                 child: const Center(
-                   child: CircularProgressIndicator(),
-                 ),
-               ),
+
+            // Loading Indicator Overlay
+            if (_isLoading)
+              Container(
+                color: Colors.black.withOpacity(0.3),
+                child: const Center(
+                  child: CircularProgressIndicator(),
+                ),
+              ),
           ],
         ),
       ),

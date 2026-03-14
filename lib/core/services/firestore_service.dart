@@ -265,27 +265,34 @@ class FirestoreService {
       String circleId, String userId, String newRole) async {
     try {
       await _firestore
-          .collection(circlesCollection)
+          .collection('circles')
           .doc(circleId)
           .collection('members')
           .doc(userId)
-          .update({'role': newRole});
+          .update({
+        'role': newRole,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
     } catch (e) {
-      print("🔥 ERROR in updateCircleMemberRole: $e");
-      throw Exception('メンバー権限の更新に失敗しました: $e');
+      throw Exception('権限の変更に失敗しました: $e');
     }
   }
 
   Future<void> removeCircleMember(String circleId, String userId) async {
     try {
+      // 1. メンバーサブコレクションから削除
       await _firestore
-          .collection(circlesCollection)
+          .collection('circles')
           .doc(circleId)
           .collection('members')
           .doc(userId)
           .delete();
+
+      // 2. サークル本体のメンバー数を -1 する
+      await _firestore.collection('circles').doc(circleId).update({
+        'memberCount': FieldValue.increment(-1),
+      });
     } catch (e) {
-      print("🔥 ERROR in removeCircleMember: $e");
       throw Exception('メンバーの削除に失敗しました: $e');
     }
   }

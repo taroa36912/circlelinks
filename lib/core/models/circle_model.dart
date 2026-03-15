@@ -2,7 +2,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 class CircleModel {
   final String id;
-  final String userId;
   final String email;
   final String universityName;
   final String circleName;
@@ -19,7 +18,6 @@ class CircleModel {
 
   CircleModel({
     required this.id,
-    required this.userId,
     required this.email,
     required this.universityName,
     required this.circleName,
@@ -39,7 +37,6 @@ class CircleModel {
     final data = doc.data() as Map<String, dynamic>;
     return CircleModel(
       id: doc.id,
-      userId: data['userId'] ?? '',
       email: data['email'] ?? '',
       universityName: data['universityName'] ?? '',
       circleName: data['circleName'] ?? '',
@@ -58,7 +55,6 @@ class CircleModel {
 
   Map<String, dynamic> toFirestore() {
     return {
-      'userId': userId,
       'email': email,
       'universityName': universityName,
       'circleName': circleName,
@@ -77,7 +73,6 @@ class CircleModel {
 
   CircleModel copyWith({
     String? id,
-    String? userId,
     String? email,
     String? universityName,
     String? circleName,
@@ -94,7 +89,6 @@ class CircleModel {
   }) {
     return CircleModel(
       id: id ?? this.id,
-      userId: userId ?? this.userId,
       email: email ?? this.email,
       universityName: universityName ?? this.universityName,
       circleName: circleName ?? this.circleName,
@@ -112,4 +106,3 @@ class CircleModel {
     );
   }
 }
-

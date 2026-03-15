@@ -94,6 +94,7 @@ class _CircleDmListScreenState extends ConsumerState<CircleDmListScreen> {
                   arguments: {
                     'dmChannelId': channel.id,
                     'recipientName': channel.individualName, // 相手は個人
+                    'isCircleAdmin': true, // ⬇️ 修正: isCircleAdminをtrueに設定
                   },
                 );
               },

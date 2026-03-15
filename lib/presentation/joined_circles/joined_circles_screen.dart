@@ -2,14 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:sizer/sizer.dart';
 import '../../core/app_export.dart';
 
-class MyCirclesListScreen extends ConsumerStatefulWidget {
-  const MyCirclesListScreen({super.key});
+class JoinedCirclesScreen extends ConsumerStatefulWidget {
+  const JoinedCirclesScreen({super.key});
 
   @override
-  ConsumerState<MyCirclesListScreen> createState() => _MyCirclesListScreenState();
+  ConsumerState<JoinedCirclesScreen> createState() =>
+      _JoinedCirclesScreenState();
 }
 
-class _MyCirclesListScreenState extends ConsumerState<MyCirclesListScreen> {
+class _JoinedCirclesScreenState extends ConsumerState<JoinedCirclesScreen> {
   String? _currentUserId;
 
   @override
@@ -18,13 +19,46 @@ class _MyCirclesListScreenState extends ConsumerState<MyCirclesListScreen> {
     _currentUserId = ref.read(firebaseAuthServiceProvider).currentUser?.uid;
   }
 
+  // 自分が所属している（admin or member）サークルを取得するStream
+  Stream<List<CircleModel>> _getJoinedCirclesStream(String userId) {
+    return FirebaseFirestore.instance
+        .collectionGroup('members')
+        .where('userId', isEqualTo: userId)
+        .snapshots()
+        .asyncMap<List<CircleModel>>((snapshot) async {
+          final circleIds = snapshot.docs
+              .map((doc) => doc.reference.parent.parent?.id)
+              .whereType<String>()
+              .toList();
+
+          if (circleIds.isEmpty) return [];
+
+          try {
+            final circlesSnapshot = await FirebaseFirestore.instance
+                .collection('circles')
+                .where(FieldPath.documentId, whereIn: circleIds.take(30).toList())
+                .get();
+
+            final circles = circlesSnapshot.docs
+                .map((doc) => CircleModel.fromFirestore(doc))
+                .toList();
+
+            circles.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+            return circles;
+          } catch (e) {
+            print("🔥 ERROR in fetching joined circle details: $e");
+            return [];
+          }
+        });
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
     if (_currentUserId == null) {
       return Scaffold(
-        appBar: AppBar(title: const Text('サークル管理')),
+        appBar: AppBar(title: const Text('所属サークル')),
         body: const Center(child: Text('ログインが必要です')),
       );
     }
@@ -32,7 +66,7 @@ class _MyCirclesListScreenState extends ConsumerState<MyCirclesListScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          '管理サークル一覧',
+          '所属サークル一覧',
           style: theme.textTheme.titleLarge?.copyWith(
             fontWeight: FontWeight.w600,
           ),
@@ -41,29 +75,31 @@ class _MyCirclesListScreenState extends ConsumerState<MyCirclesListScreen> {
         elevation: 0,
       ),
       body: _buildCircleList(theme),
-      
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {
-          Navigator.pushNamed(context, AppRoutes.circleRegistration);
-        },
-        icon: const Icon(Icons.add),
-        label: const Text('新規サークル作成'),
-      ),
     );
   }
 
   Widget _buildCircleList(ThemeData theme) {
-    final firestoreService = ref.read(firestoreServiceProvider);
-
     return StreamBuilder<List<CircleModel>>(
-      stream: firestoreService.getMyCircles(_currentUserId!),
+      stream: _getJoinedCirclesStream(_currentUserId!),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
         }
+        
+        // ⬇️ 修正箇所: Text を SelectableText に変更 ⬇️
         if (snapshot.hasError) {
-          return Center(child: Text('エラー: ${snapshot.error}'));
+          return Center(
+            child: Padding(
+              padding: EdgeInsets.all(4.w),
+              child: SelectableText(
+                'エラーが発生しました。以下のリンクをコピーしてブラウザで開いてください:\n\n${snapshot.error}',
+                style: const TextStyle(color: Colors.red),
+                textAlign: TextAlign.center,
+              ),
+            ),
+          );
         }
+        // ⬆️ 修正ここまで ⬆️
         
         final circles = snapshot.data ?? [];
 
@@ -72,14 +108,15 @@ class _MyCirclesListScreenState extends ConsumerState<MyCirclesListScreen> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Icon(Icons.group_off, size: 60, color: Colors.grey),
+                Icon(Icons.group_off, size: 15.w, color: Colors.grey),
                 SizedBox(height: 2.h),
-                const Text('管理しているサークルがありません'),
-                TextButton(
+                const Text('現在所属しているサークルはありません'),
+                SizedBox(height: 2.h),
+                ElevatedButton(
                   onPressed: () {
-                    Navigator.pushNamed(context, AppRoutes.circleRegistration);
+                    Navigator.pushNamed(context, AppRoutes.circleDiscovery);
                   },
-                  child: const Text('サークルを新規登録する'),
+                  child: const Text('サークルを探す'),
                 ),
               ],
             ),
@@ -114,8 +151,8 @@ class _MyCirclesListScreenState extends ConsumerState<MyCirclesListScreen> {
                 onTap: () {
                   Navigator.pushNamed(
                     context,
-                    AppRoutes.circleManagement,
-                    arguments: {'circle': circle},
+                    AppRoutes.circleProfile,
+                    arguments: circle,
                   );
                 },
               ),

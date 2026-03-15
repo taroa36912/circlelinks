@@ -171,16 +171,15 @@ class _CircleManagementScreenState
     }
   }
 
-  // ⬇️ 追加：メンバー操作用のアクションメソッド（安全な context を使用）
   Future<void> _handleMemberAction(
-      String action, MemberModel member, String displayName) async {
+      String action, MemberModel member, String targetUserId, String displayName) async {
     final firestoreService = ref.read(firestoreServiceProvider);
 
     try {
       if (action == 'toggle_role') {
         final newRole = member.role == 'admin' ? 'member' : 'admin';
         await firestoreService.updateCircleMemberRole(
-            widget.circle.id, member.userId, newRole);
+            widget.circle.id, targetUserId, newRole);
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -206,7 +205,7 @@ class _CircleManagementScreenState
 
         if (confirm == true) {
           await firestoreService.removeCircleMember(
-              widget.circle.id, member.userId);
+              widget.circle.id, targetUserId);
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(content: Text('メンバーを削除しました')),
@@ -216,7 +215,6 @@ class _CircleManagementScreenState
       }
     } catch (e) {
       if (mounted) {
-        // エラー発生時は詳細を表示してユーザーに通知する
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('操作に失敗しました: $e'), backgroundColor: Colors.red),
         );
@@ -294,25 +292,39 @@ class _CircleManagementScreenState
                     subtitle: Text(member.role == 'admin' ? '管理者' : '一般メンバー'),
                     trailing: isMe
                         ? const Chip(label: Text('あなた'))
-                        : PopupMenuButton<String>(
-                            onSelected: (value) => _handleMemberAction(
-                              value,
-                              member.copyWith(userId: memberUserId),
-                              displayName,
-                            ),
-                            itemBuilder: (popupContext) => [
-                              PopupMenuItem(
-                                value: 'toggle_role',
-                                child: Text(member.role == 'admin'
-                                    ? '一般メンバーに降格'
-                                    : '管理者に昇格'),
-                              ),
-                              const PopupMenuItem(
-                                value: 'remove',
-                                child: Text('サークルから削除',
-                                    style: TextStyle(color: Colors.red)),
-                              ),
-                            ],
+                        : IconButton(
+                            icon: const Icon(Icons.more_vert),
+                            onPressed: () {
+                              showModalBottomSheet(
+                                context: context,
+                                builder: (sheetContext) => SafeArea(
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      ListTile(
+                                        leading: const Icon(Icons.manage_accounts),
+                                        title: Text(member.role == 'admin'
+                                            ? '一般メンバーに降格'
+                                            : '管理者に昇格'),
+                                        onTap: () {
+                                          Navigator.pop(sheetContext);
+                                          _handleMemberAction('toggle_role', member, memberUserId, displayName);
+                                        },
+                                      ),
+                                      ListTile(
+                                        leading: const Icon(Icons.person_remove, color: Colors.red),
+                                        title: const Text('サークルから削除',
+                                            style: TextStyle(color: Colors.red)),
+                                        onTap: () {
+                                          Navigator.pop(sheetContext);
+                                          _handleMemberAction('remove', member, memberUserId, displayName);
+                                        },
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            },
                           ),
                   ),
                 );

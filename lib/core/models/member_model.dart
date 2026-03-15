@@ -15,9 +15,11 @@ class MemberModel {
 
   factory MemberModel.fromFirestore(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>;
+    final rawUserId = (data['userId'] as String?)?.trim();
     return MemberModel(
       id: doc.id,
-      userId: data['userId'] ?? '',
+      // Legacy documents may not have userId; use document id in that case.
+      userId: (rawUserId != null && rawUserId.isNotEmpty) ? rawUserId : doc.id,
       role: data['role'] ?? 'member',
       joinedAt: (data['joinedAt'] as Timestamp).toDate(),
     );

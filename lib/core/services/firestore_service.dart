@@ -646,6 +646,93 @@ class FirestoreService {
             snapshot.docs.map((doc) => EventModel.fromFirestore(doc)).toList());
   }
 
+  Future<List<EventModel>> getVisibleEventsForUser(String userId) async {
+    try {
+      final memberSnapshot = await _firestore
+          .collectionGroup('members')
+          .where('userId', isEqualTo: userId)
+          .get();
+
+      final myCircleIds = memberSnapshot.docs
+          .map((doc) => doc.reference.parent.parent?.id)
+          .whereType<String>()
+          .toSet();
+
+      final visibleCreatorCircleIds = <String>{...myCircleIds};
+      for (final circleId in myCircleIds) {
+        final received = await _firestore
+            .collection(connectionRequestsCollection)
+            .where('toCircleId', isEqualTo: circleId)
+            .where('status', isEqualTo: 'approved')
+            .get();
+        for (final doc in received.docs) {
+          final data = doc.data();
+          final fromCircleId = (data['fromCircleId'] as String?) ?? '';
+          if (fromCircleId.isNotEmpty) {
+            visibleCreatorCircleIds.add(fromCircleId);
+          }
+        }
+
+        final sent = await _firestore
+            .collection(connectionRequestsCollection)
+            .where('fromCircleId', isEqualTo: circleId)
+            .where('status', isEqualTo: 'approved')
+            .get();
+        for (final doc in sent.docs) {
+          final data = doc.data();
+          final toCircleId = (data['toCircleId'] as String?) ?? '';
+          if (toCircleId.isNotEmpty) {
+            visibleCreatorCircleIds.add(toCircleId);
+          }
+        }
+      }
+
+      final resultById = <String, EventModel>{};
+
+      final publicSnapshot = await _firestore
+          .collection(eventsCollection)
+          .where('isDraft', isEqualTo: false)
+          .where('visibility', isEqualTo: 'public')
+          .orderBy('startTime', descending: false)
+          .limit(200)
+          .get();
+      for (final doc in publicSnapshot.docs) {
+        final event = EventModel.fromFirestore(doc);
+        resultById[event.id] = event;
+      }
+
+      if (visibleCreatorCircleIds.isNotEmpty) {
+        final ids = visibleCreatorCircleIds.toList();
+        for (var i = 0; i < ids.length; i += 10) {
+          final chunk = ids.sublist(i, (i + 10).clamp(0, ids.length));
+          final creatorSnapshot = await _firestore
+              .collection(eventsCollection)
+              .where('isDraft', isEqualTo: false)
+              .where('circleId', whereIn: chunk)
+              .orderBy('startTime', descending: false)
+              .limit(200)
+              .get();
+
+          for (final doc in creatorSnapshot.docs) {
+            final event = EventModel.fromFirestore(doc);
+            if (event.visibility == 'public' ||
+                event.allowedCircleIds.any(myCircleIds.contains) ||
+                myCircleIds.contains(event.circleId)) {
+              resultById[event.id] = event;
+            }
+          }
+        }
+      }
+
+      final sorted = resultById.values.toList()
+        ..sort((a, b) => a.startTime.compareTo(b.startTime));
+      return sorted;
+    } catch (e) {
+      print("🔥 ERROR in getVisibleEventsForUser: $e");
+      throw Exception('閲覧可能なイベントの取得に失敗しました: $e');
+    }
+  }
+
   Future<List<EventModel>> getUpcomingEvents() async {
     try {
       final now = DateTime.now();

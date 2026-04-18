@@ -1,19 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'dart:convert';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sizer/sizer.dart';
 
 import '../../core/app_export.dart';
 import '../../core/models/event_model.dart';
-import '../../core/services/firestore_service.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import './widgets/advanced_options_section.dart';
 import './widgets/attendance_settings_section.dart';
 import './widgets/date_time_section.dart';
 import './widgets/event_basics_section.dart';
 import './widgets/location_section.dart';
 import './widgets/payment_section.dart';
-
-import 'package:flutter_riverpod/flutter_riverpod.dart'; // Add this
 
 class EventCreation extends ConsumerStatefulWidget {
   const EventCreation({super.key});
@@ -47,24 +45,35 @@ class _EventCreationState extends ConsumerState<EventCreation> {
   bool _enableCollaborationPosting = false;
   List<String> _notificationPreferences = ['event_created', 'rsvp_reminder'];
   bool _advancedOptionsExpanded = false;
+  String _visibility = 'public';
+  List<CircleModel> _connectedCircles = [];
+  final Set<String> _selectedAllowedCircleIds = {};
+  bool _isSubmitting = false;
 
   // UI State
   bool _isDraftSaved = false;
-  String? _circleId; // New
+  String? _circleId;
+  List<CircleModel> _myAdminCircles = [];
+  bool _isLoadingMyCircles = true;
+  String? _loadedDraftKey;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
-    if (args != null && args['circleId'] != null) {
-      _circleId = args['circleId'];
+    if (_circleId != null) {
+      return;
     }
+    final args =
+        ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+    if (args != null && args['circleId'] != null) {
+      _circleId = args['circleId'] as String;
+    }
+    _ensureCircleContext();
   }
 
   @override
   void initState() {
     super.initState();
-    _loadDraft();
     _setupAutoSave();
   }
 
@@ -135,11 +144,22 @@ class _EventCreationState extends ConsumerState<EventCreation> {
           ),
         ],
         TextButton(
-          onPressed: _isFormValid() ? _createEvent : null,
+          onPressed: _saveDraft,
           child: Text(
-            '作成',
+            '下書き',
             style: TextStyle(
-              color: _isFormValid()
+              color: AppTheme.lightTheme.colorScheme.secondary,
+              fontWeight: FontWeight.w600,
+              fontSize: 15.sp,
+            ),
+          ),
+        ),
+        TextButton(
+          onPressed: (_isFormValid() && !_isSubmitting) ? _createEvent : null,
+          child: Text(
+            _isSubmitting ? '作成中...' : '作成',
+            style: TextStyle(
+              color: (_isFormValid() && !_isSubmitting)
                   ? AppTheme.lightTheme.colorScheme.primary
                   : AppTheme.textSecondary,
               fontWeight: FontWeight.w600,
@@ -175,6 +195,8 @@ class _EventCreationState extends ConsumerState<EventCreation> {
               controller: _scrollController,
               padding: EdgeInsets.only(bottom: 10.h),
               children: [
+                _buildOrganizerCircleSelector(),
+
                 // Event Basics
                 EventBasicsSection(
                   titleController: _titleController,
@@ -234,6 +256,8 @@ class _EventCreationState extends ConsumerState<EventCreation> {
                   },
                 ),
 
+                _buildVisibilitySection(),
+
                 // Payment
                 PaymentSection(
                   costPerPerson: _costPerPerson,
@@ -286,6 +310,230 @@ class _EventCreationState extends ConsumerState<EventCreation> {
           ),
         ),
       ],
+    );
+  }
+
+  Future<void> _ensureCircleContext() async {
+    final currentUser = ref.read(firebaseAuthServiceProvider).currentUser;
+    if (currentUser == null) {
+      if (mounted) {
+        setState(() {
+          _myAdminCircles = [];
+          _circleId = null;
+          _isLoadingMyCircles = false;
+          _connectedCircles = [];
+          _selectedAllowedCircleIds.clear();
+        });
+      }
+      return;
+    }
+
+    final circles = await ref
+        .read(firestoreServiceProvider)
+        .getMyCircles(currentUser.uid)
+        .first;
+
+    String? resolvedCircleId = _circleId;
+    if (resolvedCircleId == null ||
+        !circles.any((circle) => circle.id == resolvedCircleId)) {
+      resolvedCircleId = circles.isNotEmpty ? circles.first.id : null;
+    }
+
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {
+      _myAdminCircles = circles;
+      _circleId = resolvedCircleId;
+      _isLoadingMyCircles = false;
+    });
+
+    if (resolvedCircleId != null) {
+      await _loadConnectedCircles(resolvedCircleId);
+      await _loadDraft();
+    } else {
+      setState(() {
+        _connectedCircles = [];
+        _selectedAllowedCircleIds.clear();
+      });
+    }
+  }
+
+  Widget _buildOrganizerCircleSelector() {
+    if (_isLoadingMyCircles) {
+      return Card(
+        margin: EdgeInsets.symmetric(horizontal: 4.w, vertical: 1.h),
+        child: Padding(
+          padding: EdgeInsets.all(4.w),
+          child: const Center(child: CircularProgressIndicator()),
+        ),
+      );
+    }
+
+    if (_myAdminCircles.isEmpty) {
+      return Card(
+        margin: EdgeInsets.symmetric(horizontal: 4.w, vertical: 1.h),
+        color: AppTheme.warning.withValues(alpha: 0.08),
+        child: Padding(
+          padding: EdgeInsets.all(4.w),
+          child: Row(
+            children: [
+              Icon(Icons.info_outline,
+                  color: AppTheme.lightTheme.colorScheme.secondary),
+              SizedBox(width: 2.w),
+              const Expanded(
+                child: Text('管理しているサークルがありません。先にサークルを作成してください。'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return Card(
+      margin: EdgeInsets.symmetric(horizontal: 4.w, vertical: 1.h),
+      child: Padding(
+        padding: EdgeInsets.all(4.w),
+        child: DropdownButtonFormField<String>(
+          value: _myAdminCircles.any((circle) => circle.id == _circleId)
+              ? _circleId
+              : null,
+          decoration: const InputDecoration(
+            labelText: '主催サークル *',
+            border: OutlineInputBorder(),
+          ),
+          items: _myAdminCircles
+              .map(
+                (circle) => DropdownMenuItem<String>(
+                  value: circle.id,
+                  child: Text(circle.circleName),
+                ),
+              )
+              .toList(),
+          onChanged: (newId) async {
+            if (newId == null || newId == _circleId) return;
+
+            setState(() {
+              _circleId = newId;
+              _selectedAllowedCircleIds.clear();
+              _connectedCircles = [];
+            });
+
+            await _loadConnectedCircles(newId);
+            await _loadDraft();
+            await _saveDraft();
+          },
+        ),
+      ),
+    );
+  }
+
+  Future<void> _loadConnectedCircles(String circleId) async {
+    try {
+      final service = ref.read(firestoreServiceProvider);
+      final connections = await service.getApprovedConnections(circleId).first;
+      final connectedCircleIds = connections
+          .map(
+              (c) => c.fromCircleId == circleId ? c.toCircleId : c.fromCircleId)
+          .where((id) => id.isNotEmpty)
+          .toSet()
+          .toList();
+
+      final circles = await Future.wait(
+        connectedCircleIds.map(service.getCircle),
+      );
+
+      if (mounted) {
+        setState(() {
+          _connectedCircles = circles.whereType<CircleModel>().toList();
+          _selectedAllowedCircleIds
+              .removeWhere((id) => !_connectedCircles.any((c) => c.id == id));
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _connectedCircles = [];
+          _selectedAllowedCircleIds.clear();
+        });
+      }
+    }
+  }
+
+  Widget _buildVisibilitySection() {
+    return Card(
+      margin: EdgeInsets.symmetric(horizontal: 4.w, vertical: 1.h),
+      child: Padding(
+        padding: EdgeInsets.all(4.w),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              '公開設定',
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+            ),
+            SizedBox(height: 1.h),
+            RadioListTile<String>(
+              title: const Text('公開'),
+              subtitle: const Text('すべてのユーザーが参加依頼可能'),
+              value: 'public',
+              groupValue: _visibility,
+              onChanged: (value) {
+                if (value == null) return;
+                setState(() {
+                  _visibility = value;
+                });
+                _saveDraft();
+              },
+            ),
+            RadioListTile<String>(
+              title: const Text('非公開'),
+              subtitle: const Text('選択したコネクション済みサークルのみ参加依頼可能'),
+              value: 'private',
+              groupValue: _visibility,
+              onChanged: (value) {
+                if (value == null) return;
+                setState(() {
+                  _visibility = value;
+                });
+                _saveDraft();
+              },
+            ),
+            if (_visibility == 'private') ...[
+              SizedBox(height: 1.h),
+              if (_connectedCircles.isEmpty)
+                const Text('コネクション済みサークルがありません。')
+              else
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: _connectedCircles
+                      .map(
+                        (circle) => FilterChip(
+                          label: Text(circle.circleName),
+                          selected:
+                              _selectedAllowedCircleIds.contains(circle.id),
+                          onSelected: (selected) {
+                            setState(() {
+                              if (selected) {
+                                _selectedAllowedCircleIds.add(circle.id);
+                              } else {
+                                _selectedAllowedCircleIds.remove(circle.id);
+                              }
+                            });
+                            _saveDraft();
+                          },
+                        ),
+                      )
+                      .toList(),
+                ),
+            ],
+          ],
+        ),
+      ),
     );
   }
 
@@ -413,7 +661,8 @@ class _EventCreationState extends ConsumerState<EventCreation> {
   }
 
   bool _isFormValid() {
-    return _titleController.text.isNotEmpty &&
+    return _circleId != null &&
+        _titleController.text.isNotEmpty &&
         _selectedCategory.isNotEmpty &&
         _selectedDates.isNotEmpty &&
         _startTime != null &&
@@ -527,9 +776,65 @@ class _EventCreationState extends ConsumerState<EventCreation> {
     _saveDraft();
   }
 
-  void _loadDraft() {
-    // Simulate loading draft from local storage
-    // In a real app, this would load from SharedPreferences or local database
+  String _draftStorageKey() =>
+      'event_draft_${_circleId ?? ref.read(firebaseAuthServiceProvider).currentUser?.uid ?? 'default'}';
+
+  Future<void> _loadDraft() async {
+    final draftKey = _draftStorageKey();
+    if (_loadedDraftKey == draftKey) return;
+
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString(draftKey);
+    if (raw == null || raw.isEmpty) {
+      _loadedDraftKey = draftKey;
+      return;
+    }
+
+    try {
+      final data = jsonDecode(raw) as Map<String, dynamic>;
+      if (!mounted) return;
+      setState(() {
+        _titleController.text = (data['title'] as String?) ?? '';
+        _descriptionController.text = (data['description'] as String?) ?? '';
+        _locationController.text = (data['location'] as String?) ?? '';
+        _selectedCategory = (data['category'] as String?) ?? _selectedCategory;
+        _selectedDates = ((data['selectedDates'] as List<dynamic>?) ?? const [])
+            .map((e) => DateTime.parse(e.toString()))
+            .toList();
+        final start = data['startTime'] as String?;
+        final end = data['endTime'] as String?;
+        if (start != null && start.contains(':')) {
+          final parts = start.split(':');
+          _startTime = TimeOfDay(
+              hour: int.tryParse(parts[0]) ?? 0,
+              minute: int.tryParse(parts[1]) ?? 0);
+        }
+        if (end != null && end.contains(':')) {
+          final parts = end.split(':');
+          _endTime = TimeOfDay(
+              hour: int.tryParse(parts[0]) ?? 0,
+              minute: int.tryParse(parts[1]) ?? 0);
+        }
+        _visibility = (data['visibility'] as String?) ?? _visibility;
+        _selectedAllowedCircleIds
+          ..clear()
+          ..addAll(((data['allowedCircleIds'] as List<dynamic>?) ?? const [])
+              .map((e) => e.toString()));
+        _costPerPerson = (data['costPerPerson'] as num?)?.toDouble();
+        _paymentMethod = (data['paymentMethod'] as String?) ?? _paymentMethod;
+        _payPayEnabled = (data['payPayEnabled'] as bool?) ?? _payPayEnabled;
+
+        final savedCircleId = data['circleId'] as String?;
+        if (savedCircleId != null &&
+            _myAdminCircles.any((circle) => circle.id == savedCircleId)) {
+          _circleId = savedCircleId;
+        }
+      });
+    } catch (_) {
+      // Keep creation flow usable even if draft format is stale.
+    }
+
+    _loadedDraftKey = draftKey;
   }
 
   void _setupAutoSave() {
@@ -538,11 +843,32 @@ class _EventCreationState extends ConsumerState<EventCreation> {
     _locationController.addListener(_saveDraft);
   }
 
-  void _saveDraft() {
-    // Simulate saving draft to local storage
-    setState(() => _isDraftSaved = true);
+  Future<void> _saveDraft() async {
+    final prefs = await SharedPreferences.getInstance();
+    final payload = {
+      'title': _titleController.text.trim(),
+      'description': _descriptionController.text.trim(),
+      'location': _locationController.text.trim(),
+      'category': _selectedCategory,
+      'selectedDates': _selectedDates.map((d) => d.toIso8601String()).toList(),
+      'startTime': _startTime == null
+          ? null
+          : '${_startTime!.hour}:${_startTime!.minute}',
+      'endTime':
+          _endTime == null ? null : '${_endTime!.hour}:${_endTime!.minute}',
+      'visibility': _visibility,
+      'allowedCircleIds': _selectedAllowedCircleIds.toList(),
+      'circleId': _circleId,
+      'costPerPerson': _costPerPerson,
+      'paymentMethod': _paymentMethod,
+      'payPayEnabled': _payPayEnabled,
+      'savedAt': DateTime.now().toIso8601String(),
+    };
 
-    // Reset the indicator after 2 seconds
+    await prefs.setString(_draftStorageKey(), jsonEncode(payload));
+
+    if (!mounted) return;
+    setState(() => _isDraftSaved = true);
     Future.delayed(const Duration(seconds: 2), () {
       if (mounted) {
         setState(() => _isDraftSaved = false);
@@ -562,9 +888,11 @@ class _EventCreationState extends ConsumerState<EventCreation> {
             child: const Text('続行'),
           ),
           TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              Navigator.pop(context);
+            onPressed: () async {
+              final navigator = Navigator.of(context);
+              await _saveDraft();
+              navigator.pop();
+              navigator.pop();
             },
             style: TextButton.styleFrom(foregroundColor: AppTheme.error),
             child: const Text('キャンセル'),
@@ -722,6 +1050,14 @@ class _EventCreationState extends ConsumerState<EventCreation> {
                 '${_rsvpDeadline!.year}年${_rsvpDeadline!.month}月${_rsvpDeadline!.day}日',
               ),
 
+            _buildPreviewRow(
+              'visibility',
+              '公開範囲',
+              _visibility == 'public'
+                  ? '公開（全ユーザー）'
+                  : '非公開（${_selectedAllowedCircleIds.length}サークル）',
+            ),
+
             // Capacity
             if (_capacityLimit != null)
               _buildPreviewRow('people', '定員', '$_capacityLimit人'),
@@ -780,33 +1116,49 @@ class _EventCreationState extends ConsumerState<EventCreation> {
   Future<void> _createEvent() async {
     if (!_isFormValid()) return;
     if (_circleId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Error: Circle ID missing')));
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Error: Circle ID missing')));
+      return;
+    }
+    if (_visibility == 'private' && _selectedAllowedCircleIds.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('非公開イベントは公開先サークルを1つ以上選択してください')),
+      );
       return;
     }
 
     try {
-      setState(() => _isDraftSaved = true); // Show some loading state or repurpose this
+      setState(() => _isSubmitting = true);
 
       final firestoreService = ref.read(firestoreServiceProvider);
-      
+
       final newEvent = EventModel(
-        id: DateTime.now().millisecondsSinceEpoch.toString(), // Temporary ID generation, better to let Firestore gen or use uuid
+        id: DateTime.now().millisecondsSinceEpoch.toString(),
         circleId: _circleId!,
         title: _titleController.text,
         description: _descriptionController.text,
+        category: _selectedCategory.isEmpty ? 'other' : _selectedCategory,
         startTime: _getDateWithTime(_selectedDates.first, _startTime!),
-        endTime: _getDateWithTime(_selectedDates.first, _endTime!), // Assuming single date for simplicity for now
+        endTime: _getDateWithTime(_selectedDates.first, _endTime!),
         location: _locationController.text,
         fee: _costPerPerson?.toInt() ?? 0,
+        visibility: _visibility,
+        allowedCircleIds: _visibility == 'public'
+            ? const []
+            : _selectedAllowedCircleIds.toList(),
+        isDraft: false,
         createdAt: DateTime.now(),
         updatedAt: DateTime.now(),
       );
 
-      // Using the doc reference ID tactic is better
-      final docRef = FirebaseFirestore.instance.collection(FirestoreService.eventsCollection).doc();
+      final docRef = FirebaseFirestore.instance
+          .collection(FirestoreService.eventsCollection)
+          .doc();
       final eventWithId = newEvent.copyWith(id: docRef.id);
-      
+
       await firestoreService.createEvent(eventWithId);
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_draftStorageKey());
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -828,10 +1180,14 @@ class _EventCreationState extends ConsumerState<EventCreation> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-             content: Text('イベント作成に失敗しました: $e'),
-             backgroundColor: Colors.red,
+            content: Text('イベント作成に失敗しました: $e'),
+            backgroundColor: Colors.red,
           ),
         );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isSubmitting = false);
       }
     }
   }
@@ -839,5 +1195,4 @@ class _EventCreationState extends ConsumerState<EventCreation> {
   DateTime _getDateWithTime(DateTime date, TimeOfDay time) {
     return DateTime(date.year, date.month, date.day, time.hour, time.minute);
   }
-
 }

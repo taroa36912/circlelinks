@@ -104,6 +104,9 @@ class _ActionButtonsWidgetState extends State<ActionButtonsWidget> {
                   style: AppTheme.lightTheme.textTheme.titleMedium?.copyWith(
                     color: _getStatusColor(widget.currentUserStatus),
                   ),
+                  // 💡 修正: 文字が長すぎる場合は「...」で省略してエラーを防ぐ
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
                 ),
               ),
               CustomIconWidget(
@@ -195,7 +198,9 @@ class _ActionButtonsWidgetState extends State<ActionButtonsWidget> {
             ),
           ),
           SizedBox(width: 3.w),
+          // 💡 修正: Expandedの割合(flex)を指定し、ボタンとスペースを分け合うようにした
           Expanded(
+            flex: 3,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -204,36 +209,50 @@ class _ActionButtonsWidgetState extends State<ActionButtonsWidget> {
                   style: AppTheme.lightTheme.textTheme.titleMedium?.copyWith(
                     color: _getPaymentTextColor(paymentStatus),
                   ),
+                  overflow: TextOverflow.ellipsis, // 💡 はみ出し防止
                 ),
                 Text(
                   amount,
                   style: AppTheme.lightTheme.textTheme.bodyMedium?.copyWith(
                     color: AppTheme.lightTheme.colorScheme.onSurfaceVariant,
                   ),
+                  overflow: TextOverflow.ellipsis, // 💡 はみ出し防止
                 ),
               ],
             ),
           ),
           if (paymentStatus == 'pending') ...[
-            _isProcessingPayment
-                ? SizedBox(
-                    width: 6.w,
-                    height: 6.w,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: AppTheme.lightTheme.colorScheme.primary,
+            SizedBox(width: 2.w),
+            // 💡 修正: ボタンもExpandedで囲み、画面を突き破らないようにした
+            Expanded(
+              flex: 2,
+              child: _isProcessingPayment
+                  ? Align(
+                      alignment: Alignment.centerRight,
+                      child: SizedBox(
+                        width: 6.w,
+                        height: 6.w,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: AppTheme.lightTheme.colorScheme.primary,
+                        ),
+                      ),
+                    )
+                  : ElevatedButton(
+                      onPressed: _processPayment,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppTheme.lightTheme.colorScheme.primary,
+                        foregroundColor: Colors.white,
+                        padding: EdgeInsets.symmetric(
+                            horizontal: 2.w, vertical: 1.5.h), // 余白を調整
+                      ),
+                      // 💡 修正: スマホが細すぎる場合は文字を自動縮小させる
+                      child: const FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text('Pay Now'),
+                      ),
                     ),
-                  )
-                : ElevatedButton(
-                    onPressed: _processPayment,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppTheme.lightTheme.colorScheme.primary,
-                      foregroundColor: Colors.white,
-                      padding: EdgeInsets.symmetric(
-                          horizontal: 4.w, vertical: 1.5.h),
-                    ),
-                    child: Text('Pay Now'),
-                  ),
+            ),
           ],
         ],
       ),
@@ -368,7 +387,7 @@ class _ActionButtonsWidgetState extends State<ActionButtonsWidget> {
         padding: EdgeInsets.all(4.w),
         decoration: BoxDecoration(
           color: AppTheme.lightTheme.colorScheme.surface,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -427,14 +446,16 @@ class _ActionButtonsWidgetState extends State<ActionButtonsWidget> {
     // Simulate payment processing
     await Future.delayed(const Duration(seconds: 2));
 
-    setState(() => _isProcessingPayment = false);
+    if (mounted) {
+      setState(() => _isProcessingPayment = false);
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Payment processed successfully via PayPay'),
-        behavior: SnackBarBehavior.floating,
-        backgroundColor: AppTheme.lightTheme.colorScheme.tertiary,
-      ),
-    );
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Payment processed successfully via PayPay'),
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: AppTheme.lightTheme.colorScheme.tertiary,
+        ),
+      );
+    }
   }
 }

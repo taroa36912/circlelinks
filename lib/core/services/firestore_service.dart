@@ -540,7 +540,7 @@ class FirestoreService {
     try {
       final query = _firestore
           .collection(dmChannelsCollection)
-          .where('participants', arrayContains: individualId);
+          .where('individualId', isEqualTo: individualId);
       final snapshot = await query.get();
       final existingChannels = snapshot.docs.where((doc) {
         final data = doc.data();

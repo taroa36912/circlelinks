@@ -1,6 +1,9 @@
 const functions = require("firebase-functions");
 const admin = require("firebase-admin");
 const axios = require("axios");
+const Stripe = require("stripe");
+
+const stripe = Stripe("YOUR_STRIPE_SECRET_KEY");
 
 admin.initializeApp();
 
@@ -58,6 +61,36 @@ exports.verifyLineToken = functions.region('asia-northeast1').https.onCall(async
 
   } catch (error) {
     console.error("Error verifying LINE token:", error);
-    throw new functions.https.HttpsError("internal", "Failed to verify LINE token.", error.message);
+    throw new functions.https.HttpsError("internal", "Failed to verify LINE token.", error.message || String(error));
+  }
+});
+
+exports.createStripePaymentIntent = functions.region('asia-northeast1').https.onCall(async (data, context) => {
+  const amount = data?.amount;
+
+  if (typeof amount !== 'number' || amount <= 0) {
+    throw new functions.https.HttpsError(
+      'invalid-argument',
+      'The function must be called with a positive numeric amount.'
+    );
+  }
+
+  try {
+    const paymentIntent = await stripe.paymentIntents.create({
+      amount,
+      currency: 'jpy',
+      payment_method_types: ['card'],
+    });
+
+    return {
+      clientSecret: paymentIntent.client_secret,
+    };
+  } catch (error) {
+    console.error('Error creating Stripe PaymentIntent:', error);
+    throw new functions.https.HttpsError(
+      'internal',
+      'Failed to create Stripe PaymentIntent.',
+      error.message || String(error)
+    );
   }
 });

@@ -1,4 +1,6 @@
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_stripe/flutter_stripe.dart';
 import 'package:sizer/sizer.dart';
 
 import '../../../core/app_export.dart';
@@ -241,7 +243,8 @@ class _ActionButtonsWidgetState extends State<ActionButtonsWidget> {
                   : ElevatedButton(
                       onPressed: _processPayment,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: AppTheme.lightTheme.colorScheme.primary,
+                        backgroundColor:
+                            AppTheme.lightTheme.colorScheme.primary,
                         foregroundColor: Colors.white,
                         padding: EdgeInsets.symmetric(
                             horizontal: 2.w, vertical: 1.5.h), // 余白を調整
@@ -443,19 +446,74 @@ class _ActionButtonsWidgetState extends State<ActionButtonsWidget> {
   Future<void> _processPayment() async {
     setState(() => _isProcessingPayment = true);
 
-    // Simulate payment processing
-    await Future.delayed(const Duration(seconds: 2));
+    try {
+      final rawAmount = widget.eventData['amount'] as String? ?? '';
+      final cleanedAmount = rawAmount.replaceAll(RegExp(r'[^0-9]'), '');
+      final amount = int.tryParse(cleanedAmount) ?? 0;
 
-    if (mounted) {
-      setState(() => _isProcessingPayment = false);
+      if (amount <= 0) {
+        throw Exception('Invalid payment amount.');
+      }
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('Payment processed successfully via PayPay'),
-          behavior: SnackBarBehavior.floating,
-          backgroundColor: AppTheme.lightTheme.colorScheme.tertiary,
+      final callable = FirebaseFunctions.instanceFor(region: 'asia-northeast1')
+          .httpsCallable('createStripePaymentIntent');
+      final result = await callable.call(<String, dynamic>{
+        'amount': amount,
+      });
+
+      final data = result.data as Map<String, dynamic>?;
+      final clientSecret = data?['clientSecret'] as String?;
+
+      if (clientSecret == null || clientSecret.isEmpty) {
+        throw Exception('Unable to retrieve Stripe client secret.');
+      }
+
+      await Stripe.instance.initPaymentSheet(
+        paymentSheetParameters: SetupPaymentSheetParameters(
+          paymentIntentClientSecret: clientSecret,
+          merchantDisplayName: 'CircleLinks',
+          style: ThemeMode.light,
         ),
       );
+
+      await Stripe.instance.presentPaymentSheet();
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Payment processed successfully via Stripe'),
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: AppTheme.lightTheme.colorScheme.tertiary,
+          ),
+        );
+      }
+    } on StripeException catch (error) {
+      final message = error.error.localizedMessage ??
+          error.error.message ??
+          'Stripe payment failed or was canceled.';
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(message),
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: AppTheme.error,
+          ),
+        );
+      }
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(error.toString()),
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: AppTheme.error,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isProcessingPayment = false);
+      }
     }
   }
 }

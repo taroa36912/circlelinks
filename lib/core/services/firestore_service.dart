@@ -65,6 +65,48 @@ class FirestoreService {
     }
   }
 
+  Future<UserModel> upsertAuthenticatedUser({
+    required String uid,
+    required String email,
+    String? userName,
+    String? profileImageUrl,
+  }) async {
+    try {
+      final existingUser = await getUser(uid);
+      final resolvedEmail = email.trim();
+      final resolvedRole = UserModel.roleFromEmail(resolvedEmail);
+      final resolvedAccountType = UserModel.accountTypeFromRole(resolvedRole);
+      final resolvedUserName = (userName != null && userName.trim().isNotEmpty)
+          ? userName.trim()
+          : existingUser?.userName ??
+              (resolvedEmail.isNotEmpty
+                  ? resolvedEmail.split('@').first
+                  : '名無しユーザー');
+
+      final user = UserModel(
+        id: uid,
+        email: resolvedEmail,
+        userName: resolvedUserName,
+        profileImageUrl: profileImageUrl ?? existingUser?.profileImageUrl,
+        role: resolvedRole,
+        accountType: resolvedAccountType,
+        createdAt: existingUser?.createdAt ?? DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
+
+      if (existingUser == null) {
+        await createUser(user);
+      } else {
+        await updateUser(user);
+      }
+
+      return user;
+    } catch (e) {
+      print("🔥 ERROR in upsertAuthenticatedUser: $e");
+      throw Exception('認証ユーザー情報の保存に失敗しました: $e');
+    }
+  }
+
   // --- Circle operations ---
   Future<void> createCircle(CircleModel circle, String creatorId) async {
     try {

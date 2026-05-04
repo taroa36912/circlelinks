@@ -20,15 +20,15 @@ void main() async {
 
   await Supabase.initialize(
     url: 'https://hynvsvxoonoytskfsqlx.supabase.co',
-    anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh5bnZzdnhvb25veXRza2ZzcWx4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI5NjUwMDQsImV4cCI6MjA4ODU0MTAwNH0.92jOQ0-rcp6ZLShdUc3A5xRu5W5qjGvTPM7doZt8ftU',
+    anonKey:
+        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh5bnZzdnhvb25veXRza2ZzcWx4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI5NjUwMDQsImV4cCI6MjA4ODU0MTAwNH0.92jOQ0-rcp6ZLShdUc3A5xRu5W5qjGvTPM7doZt8ftU',
   );
-  
-  if (!kIsWeb && (Platform.isIOS || Platform.isAndroid)) { 
-    try {
-      await LineSDK.instance.setup("2008357841"); 
-    } catch (e) {
-      print("LINE SDK setup failed: $e");
-    }
+
+  if (!kIsWeb && (Platform.isIOS || Platform.isAndroid)) {
+    // Replace with the actual LINE Channel ID before release.
+    await LineSDK.instance.setup("YOUR_LINE_CHANNEL_ID_HERE").catchError((e) {
+      print("LINE SDK Setup Error: $e");
+    });
   }
 
   bool hasShownError = false;
@@ -51,11 +51,8 @@ void main() async {
   };
 
   // 🚨 CRITICAL: Device orientation lock - DO NOT REMOVE
-  Future.wait([
-    SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp])
-  ]).then((value) {
-    runApp(const ProviderScope(child: MyApp()));
-  });
+  await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
+  runApp(const ProviderScope(child: MyApp()));
 }
 
 class MyApp extends StatelessWidget {

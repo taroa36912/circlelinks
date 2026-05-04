@@ -93,10 +93,22 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
 
     try {
       final authService = ref.read(firebaseAuthServiceProvider);
-      await authService.signInWithEmailAndPassword(
+      final credential = await authService.signInWithEmailAndPassword(
         email: email,
         password: password,
       );
+
+      final firebaseUser = credential?.user ?? authService.currentUser;
+      if (firebaseUser != null) {
+        final firestoreService = ref.read(firestoreServiceProvider);
+        await firestoreService.upsertAuthenticatedUser(
+          uid: firebaseUser.uid,
+          email: firebaseUser.email ?? email,
+          userName: firebaseUser.displayName,
+          profileImageUrl: firebaseUser.photoURL,
+        );
+      }
+
       HapticFeedback.lightImpact();
       if (mounted) {
         setState(() {
@@ -148,6 +160,17 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
       final userCredential = await authService.signInWithGoogle();
 
       if (userCredential != null) {
+        final firebaseUser = userCredential.user ?? authService.currentUser;
+        if (firebaseUser != null) {
+          final firestoreService = ref.read(firestoreServiceProvider);
+          await firestoreService.upsertAuthenticatedUser(
+            uid: firebaseUser.uid,
+            email: firebaseUser.email ?? '',
+            userName: firebaseUser.displayName,
+            profileImageUrl: firebaseUser.photoURL,
+          );
+        }
+
         HapticFeedback.lightImpact();
         if (mounted) {
           setState(() {
@@ -202,6 +225,17 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
       final userCredential = await authService.signInWithLine();
 
       if (userCredential != null) {
+        final firebaseUser = userCredential.user ?? authService.currentUser;
+        if (firebaseUser != null) {
+          final firestoreService = ref.read(firestoreServiceProvider);
+          await firestoreService.upsertAuthenticatedUser(
+            uid: firebaseUser.uid,
+            email: firebaseUser.email ?? '',
+            userName: firebaseUser.displayName,
+            profileImageUrl: firebaseUser.photoURL,
+          );
+        }
+
         HapticFeedback.lightImpact();
         if (mounted) {
           setState(() {

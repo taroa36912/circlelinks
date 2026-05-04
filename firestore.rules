@@ -56,10 +56,7 @@ service cloud.firestore {
     }
 
     match /connectionRequests/{reqId} {
-      allow read: if isSignedIn() && (
-        ('fromCircleId' in resource.data && isAdmin(resource.data.fromCircleId)) || 
-        ('toCircleId' in resource.data && isAdmin(resource.data.toCircleId))
-      );
+      allow read: if isSignedIn();
       allow create: if isSignedIn() && 'fromCircleId' in request.resource.data && isAdmin(request.resource.data.fromCircleId);
       allow update, delete: if isSignedIn() && (
         ('fromCircleId' in resource.data && isAdmin(resource.data.fromCircleId)) || 

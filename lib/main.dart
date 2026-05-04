@@ -1,6 +1,7 @@
 import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:flutter_stripe/flutter_stripe.dart';
 import 'package:flutter/services.dart';
 import 'package:sizer/sizer.dart';
 import 'package:flutter_line_sdk/flutter_line_sdk.dart';
@@ -26,9 +27,14 @@ void main() async {
 
   if (!kIsWeb && (Platform.isIOS || Platform.isAndroid)) {
     // Replace with the actual LINE Channel ID before release.
-    await LineSDK.instance.setup("YOUR_LINE_CHANNEL_ID_HERE").catchError((e) {
+    await LineSDK.instance.setup("2008357841").catchError((e) {
       print("LINE SDK Setup Error: $e");
     });
+
+    Stripe.publishableKey = 'pk_test_51TTIwnBleRjLMsIdW0gGeiVECiXZXTKmiNkXQNK73eR2WvSHwkJhQnB4wSAExZ5ohYdQ3Bt8H4OhDwnafX3SPMsZ00537Q9eK5';
+  await Stripe.instance.applySettings();
+
+  runApp(const ProviderScope(child: MyApp()));
   }
 
   bool hasShownError = false;

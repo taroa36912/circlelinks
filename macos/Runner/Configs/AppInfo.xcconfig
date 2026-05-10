@@ -12,3 +12,7 @@ PRODUCT_BUNDLE_IDENTIFIER = com.circlelink.circlelink
 
 // The copyright displayed in application information
 PRODUCT_COPYRIGHT = Copyright © 2026 com.circlelink. All rights reserved.
+
+#include "Target Support Files/Pods-Runner/Pods-Runner.debug.xcconfig"
+#include "Target Support Files/Pods-Runner/Pods-Runner.release.xcconfig"
+#include "Target Support Files/Pods-Runner/Pods-Runner.profile.xcconfig"

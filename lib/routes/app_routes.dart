@@ -22,6 +22,7 @@ import '../presentation/event/qr_scan_screen.dart'; // New
 import '../presentation/event/event_list_screen.dart';
 import '../presentation/profile/portfolio_screen.dart'; // New
 import '../presentation/joined_circles/joined_circles_screen.dart'; // New
+import '../presentation/board/board_screen.dart';
 
 class AppRoutes {
   static const String initial = '/';
@@ -49,6 +50,7 @@ class AppRoutes {
   static const String qrScan = '/qr-scan'; // New
   static const String portfolio = '/portfolio'; // New
   static const String joinedCircles = '/joined-circles'; // New
+  static const String board = '/board';
 
   static const String circleAdmin = myCirclesList;
 
@@ -100,6 +102,7 @@ class AppRoutes {
     qrScan: (context) => const QRScanScreen(), // New
     portfolio: (context) => const PortfolioScreen(), // New
     joinedCircles: (context) => const JoinedCirclesScreen(), // New
+    board: (context) => const BoardScreen(),
 
     // ⬇️ --- 修正: connections ルートを追加 (引数を受け取る) --- ⬇️
     connections: (context) {

@@ -182,6 +182,15 @@ class _AppMenuDrawerState extends ConsumerState<AppMenuDrawer> {
                 Navigator.pushNamed(context, AppRoutes.eventList);
               },
             ),
+            _buildMenuItem(
+              theme,
+              icon: Icons.forum_outlined,
+              title: "掲示板",
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.pushNamed(context, AppRoutes.board);
+              },
+            ),
           ],
 
           const Divider(),

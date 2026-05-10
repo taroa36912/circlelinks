@@ -11,6 +11,8 @@ import '../models/user_model.dart';
 import '../models/event_model.dart'; // New
 import '../models/attendance_model.dart'; // New
 import '../models/member_model.dart';
+import '../models/board_thread_model.dart';
+import '../models/board_comment_model.dart';
 
 class FirestoreService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -25,6 +27,8 @@ class FirestoreService {
   static const String usersCollection = 'users';
   static const String eventsCollection = 'events'; // New
   static const String attendancesCollection = 'attendances'; // New
+  static const String boardThreadsCollection = 'boardThreads';
+  static const String boardCommentsCollection = 'comments';
 
   // --- User operations ---
   Future<void> createUser(UserModel user) async {
@@ -805,6 +809,66 @@ class FirestoreService {
     }).map((snapshot) => snapshot.docs
             .map((doc) => AttendanceModel.fromFirestore(doc))
             .toList());
+  }
+
+  // --- Board operations ---
+  Stream<List<BoardThreadModel>> getBoardThreadsStream() {
+    return _firestore
+        .collection(boardThreadsCollection)
+        .orderBy('createdAt', descending: true)
+        .snapshots()
+        .handleError((e) {
+      print("🔥 ERROR in getBoardThreadsStream: $e");
+      throw e;
+    }).map((snapshot) => snapshot.docs
+            .map((doc) => BoardThreadModel.fromFirestore(doc))
+            .toList());
+  }
+
+  Future<void> createBoardThread(BoardThreadModel thread) async {
+    try {
+      await _firestore
+          .collection(boardThreadsCollection)
+          .add(thread.toFirestore());
+    } catch (e) {
+      print("🔥 ERROR in createBoardThread: $e");
+      throw Exception('スレッドの作成に失敗しました: $e');
+    }
+  }
+
+  Stream<List<BoardCommentModel>> getBoardCommentsStream(String threadId) {
+    return _firestore
+        .collection(boardThreadsCollection)
+        .doc(threadId)
+        .collection(boardCommentsCollection)
+        .orderBy('createdAt', descending: false)
+        .snapshots()
+        .handleError((e) {
+      print("🔥 ERROR in getBoardCommentsStream: $e");
+      throw e;
+    }).map((snapshot) => snapshot.docs
+            .map((doc) => BoardCommentModel.fromFirestore(doc))
+            .toList());
+  }
+
+  Future<void> addBoardComment(BoardCommentModel comment) async {
+    try {
+      final threadRef =
+          _firestore.collection(boardThreadsCollection).doc(comment.threadId);
+      final commentRef = threadRef.collection(boardCommentsCollection).doc();
+      final batch = _firestore.batch();
+
+      batch.set(commentRef, comment.toFirestore());
+      batch.update(threadRef, {
+        'commentCount': FieldValue.increment(1),
+        'updatedAt': Timestamp.fromDate(comment.createdAt),
+      });
+
+      await batch.commit();
+    } catch (e) {
+      print("🔥 ERROR in addBoardComment: $e");
+      throw Exception('コメントの投稿に失敗しました: $e');
+    }
   }
 }
 

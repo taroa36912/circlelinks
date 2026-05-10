@@ -18,6 +18,8 @@ export 'models/connection_request_model.dart';
 export 'models/message_model.dart';
 export 'models/dm_message_model.dart';
 export 'models/dm_channel_model.dart';
+export 'models/board_thread_model.dart';
+export 'models/board_comment_model.dart';
 
 // Services
 export 'services/firebase_auth_service.dart';

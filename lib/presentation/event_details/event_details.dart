@@ -9,11 +9,6 @@ import './widgets/comments_section_widget.dart';
 import './widgets/event_header_widget.dart';
 import './widgets/event_info_card_widget.dart';
 
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../core/models/event_model.dart';
-import '../../core/services/firestore_service.dart';
-import 'package:intl/intl.dart'; 
-
 class EventDetails extends ConsumerStatefulWidget {
   const EventDetails({super.key});
 
@@ -25,40 +20,44 @@ class _EventDetailsState extends ConsumerState<EventDetails> {
   final ScrollController _scrollController = ScrollController();
   String _currentUserStatus = 'undecided'; // Keep simple for now
   bool _showAdditionalDetails = false;
-  
+  bool _showActionPanel = true;
+
   bool _isLoading = true;
   String? _eventId;
   Map<String, dynamic> _eventData = {}; // Initialize empty
-  List<Map<String, dynamic>> _attendees = []; // 
+  final List<Map<String, dynamic>> _attendees = []; //
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     if (_eventId == null) {
-       final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
-       if (args != null && args['eventId'] != null) {
-         _eventId = args['eventId'];
-         _loadData();
-       }
+      final args =
+          ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+      if (args != null && args['eventId'] != null) {
+        _eventId = args['eventId'];
+        _loadData();
+      }
     }
   }
 
   Future<void> _loadData() async {
     if (_eventId == null) return;
     setState(() => _isLoading = true);
-    
+
     try {
       final firestoreService = ref.read(firestoreServiceProvider);
       final event = await firestoreService.getEvent(_eventId!);
-      
+
       if (event != null) {
         // Map EventModel to the UI's expected Map format
         setState(() {
           _eventData = {
             'id': event.id,
             'title': event.title,
-            'heroImage': event.mainImageUrl ?? 'https://images.pexels.com/photos/1190298/pexels-photo-1190298.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1', // Fallback
+            'heroImage': event.mainImageUrl ??
+                'https://images.pexels.com/photos/1190298/pexels-photo-1190298.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1', // Fallback
             'date': DateFormat('MMMM d, yyyy').format(event.startTime),
-            'time': '${DateFormat('HH:mm').format(event.startTime)} - ${DateFormat('HH:mm').format(event.endTime)}',
+            'time':
+                '${DateFormat('HH:mm').format(event.startTime)} - ${DateFormat('HH:mm').format(event.endTime)}',
             'location': event.location,
             'address': event.location, // Assuming location is address for now
             'description': event.description,
@@ -70,9 +69,9 @@ class _EventDetailsState extends ConsumerState<EventDetails> {
         });
       }
     } catch (e) {
-      print("Error loading event: $e");
+      debugPrint("Error loading event: $e");
       if (mounted) {
-         setState(() => _isLoading = false);
+        setState(() => _isLoading = false);
       }
     }
   }
@@ -198,7 +197,7 @@ class _EventDetailsState extends ConsumerState<EventDetails> {
     if (_isLoading) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
-    
+
     return Scaffold(
       backgroundColor: AppTheme.lightTheme.colorScheme.surface,
       body: RefreshIndicator(
@@ -229,18 +228,23 @@ class _EventDetailsState extends ConsumerState<EventDetails> {
                       onCommentAdded: _addComment,
                     ),
                   ],
-                  SizedBox(height: 20.h), // Space for bottom actions
+                  SizedBox(
+                    height: _showActionPanel ? 24.h : 10.h,
+                  ),
                 ],
               ),
             ),
           ],
         ),
       ),
-      bottomSheet: ActionButtonsWidget(
-        eventData: _eventData,
-        currentUserStatus: _currentUserStatus,
-        onStatusChanged: _updateUserStatus,
-      ),
+      bottomSheet: _showActionPanel
+          ? ActionButtonsWidget(
+              eventData: _eventData,
+              currentUserStatus: _currentUserStatus,
+              onStatusChanged: _updateUserStatus,
+              onCollapse: () => setState(() => _showActionPanel = false),
+            )
+          : _buildCollapsedActionPanelButton(),
       floatingActionButton: _showAdditionalDetails
           ? null
           : FloatingActionButton.extended(
@@ -257,16 +261,26 @@ class _EventDetailsState extends ConsumerState<EventDetails> {
     );
   }
 
-  Future<void> _refreshEventData() async {
-    await _loadData();
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Event data updated'),
-          behavior: SnackBarBehavior.floating,
+  Widget _buildCollapsedActionPanelButton() {
+    return SafeArea(
+      minimum: EdgeInsets.symmetric(horizontal: 4.w, vertical: 1.h),
+      child: Align(
+        alignment: Alignment.centerRight,
+        heightFactor: 1,
+        child: FloatingActionButton.extended(
+          heroTag: 'event_action_panel_toggle',
+          onPressed: () => setState(() => _showActionPanel = true),
+          icon: CustomIconWidget(
+            iconName: 'keyboard_arrow_up',
+            color: Colors.white,
+            size: 20,
+          ),
+          label: const Text('出欠・支払い'),
+          backgroundColor: AppTheme.lightTheme.colorScheme.primary,
+          foregroundColor: Colors.white,
         ),
-      );
-    }
+      ),
+    );
   }
 
   void _updateUserStatus(String newStatus) {

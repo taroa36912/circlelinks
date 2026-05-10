@@ -1,10 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sizer/sizer.dart';
 import '../../core/app_export.dart';
-import '../../core/services/firestore_service.dart';
 import '../../core/models/event_model.dart';
-import '../../routes/app_routes.dart';
 
 class EventManagementScreen extends ConsumerStatefulWidget {
   const EventManagementScreen({super.key});

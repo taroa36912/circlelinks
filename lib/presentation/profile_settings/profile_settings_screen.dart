@@ -1,10 +1,7 @@
 import 'dart:io';
-import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart'; // Uint8List
 import 'package:sizer/sizer.dart';
-import 'package:image_picker/image_picker.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 
 import '../../core/app_export.dart';
@@ -14,23 +11,24 @@ class ProfileSettingsScreen extends ConsumerStatefulWidget {
   const ProfileSettingsScreen({super.key});
 
   @override
-  ConsumerState<ProfileSettingsScreen> createState() => _ProfileSettingsScreenState();
+  ConsumerState<ProfileSettingsScreen> createState() =>
+      _ProfileSettingsScreenState();
 }
 
 class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
-  final _formKey = GlobalKey<FormState>();
-  
   // Controllers
   late TextEditingController _userNameController;
   late TextEditingController _emailController;
-  final TextEditingController _currentPasswordController = TextEditingController();
+  final TextEditingController _currentPasswordController =
+      TextEditingController();
   final TextEditingController _newPasswordController = TextEditingController();
-  final TextEditingController _confirmNewPasswordController = TextEditingController();
+  final TextEditingController _confirmNewPasswordController =
+      TextEditingController();
 
   UserModel? _userModel;
   User? _firebaseUser;
   bool _isLoading = false;
-  
+
   // Image picking
   File? _imageFile;
   Uint8List? _imageBytes;
@@ -60,7 +58,7 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
 
   Future<void> _loadUserData() async {
     setState(() => _isLoading = true);
-    
+
     final authService = ref.read(firebaseAuthServiceProvider);
     _firebaseUser = authService.currentUser;
 
@@ -74,20 +72,20 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
     try {
       // 1. ユーザー情報の取得を試みる
       final userDoc = await firestoreService.getUser(_firebaseUser!.uid);
-      
+
       if (mounted) {
         setState(() {
           _userModel = userDoc;
-          
+
           if (userDoc != null) {
             // Firestoreにデータがある場合
             _userNameController.text = userDoc.userName;
             _emailController.text = userDoc.email;
           } else {
             // Firestoreにデータがない場合 (Auth情報から補完)
-            _userNameController.text = _firebaseUser!.displayName ?? 
-                                     _firebaseUser!.email?.split('@').first ?? 
-                                     '';
+            _userNameController.text = _firebaseUser!.displayName ??
+                _firebaseUser!.email?.split('@').first ??
+                '';
             _emailController.text = _firebaseUser!.email ?? '';
           }
         });
@@ -96,13 +94,13 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
       // エラーが出ても画面は閉じず、ログだけ出す
       if (mounted) {
         print("ProfileSettings: データ読み込みエラー (正常な場合もあり) $e");
-        
+
         // 最低限 Auth情報で埋める
         setState(() {
-            _userNameController.text = _firebaseUser!.displayName ?? 
-                                     _firebaseUser!.email?.split('@').first ?? 
-                                     '';
-            _emailController.text = _firebaseUser!.email ?? '';
+          _userNameController.text = _firebaseUser!.displayName ??
+              _firebaseUser!.email?.split('@').first ??
+              '';
+          _emailController.text = _firebaseUser!.email ?? '';
         });
       }
     } finally {
@@ -114,8 +112,9 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
   Future<void> _pickImage() async {
     try {
       final picker = ImagePicker();
-      final pickedFile = await picker.pickImage(source: ImageSource.gallery, imageQuality: 80);
-      
+      final pickedFile =
+          await picker.pickImage(source: ImageSource.gallery, imageQuality: 80);
+
       if (pickedFile != null) {
         final bytes = await pickedFile.readAsBytes();
         setState(() {
@@ -153,7 +152,9 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
             ],
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: const Text('キャンセル')),
+            TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('キャンセル')),
             ElevatedButton(
               onPressed: () {
                 password = passCtrl.text;
@@ -171,23 +172,27 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
   // --- 1. 基本プロフィール更新 (画像・ユーザー名) ---
   Future<void> _updateBasicProfile() async {
     if (_firebaseUser == null) return;
-    
+
     FocusScope.of(context).unfocus();
     setState(() => _isLoading = true);
 
     try {
       final storageService = ref.read(firebaseStorageServiceProvider);
       final firestoreService = ref.read(firestoreServiceProvider);
-      
+
       String? newImageUrl = _userModel?.profileImageUrl;
 
       // 画像アップロード
       if (kIsWeb && _imageBytes != null) {
-        final path = storageService.generateImagePath(_firebaseUser!.uid, 'profile');
-        newImageUrl = await storageService.uploadImage(bytes: _imageBytes!, path: path);
+        final path =
+            storageService.generateImagePath(_firebaseUser!.uid, 'profile');
+        newImageUrl =
+            await storageService.uploadImage(bytes: _imageBytes!, path: path);
       } else if (!kIsWeb && _imageFile != null) {
-        final path = storageService.generateImagePath(_firebaseUser!.uid, 'profile');
-        newImageUrl = await storageService.uploadImage(imageFile: _imageFile!, path: path);
+        final path =
+            storageService.generateImagePath(_firebaseUser!.uid, 'profile');
+        newImageUrl = await storageService.uploadImage(
+            imageFile: _imageFile!, path: path);
       }
 
       // 更新データ
@@ -204,17 +209,22 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
         await firestoreService.updateUser(updatedUser);
       } else {
         // 新規作成
+        final role = UserModel.roleFromEmail(
+            email.isNotEmpty ? email : (_firebaseUser!.email ?? ''));
+        final accountType = UserModel.accountTypeFromRole(role);
         final newUser = UserModel(
           id: _firebaseUser!.uid,
           email: email.isNotEmpty ? email : (_firebaseUser!.email ?? ''),
           userName: newUserName,
           profileImageUrl: newImageUrl,
+          role: role,
+          accountType: accountType,
           createdAt: DateTime.now(),
           updatedAt: DateTime.now(),
         );
         await firestoreService.createUser(newUser);
       }
-      
+
       // AuthのDisplayName/PhotoURLも更新
       try {
         await _firebaseUser!.updateDisplayName(newUserName);
@@ -226,10 +236,9 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
       }
 
       _showSuccessSnackBar('プロフィールを更新しました');
-      
+
       // データを再ロード
       _loadUserData();
-
     } catch (e) {
       _showErrorSnackBar('更新に失敗しました: $e');
     } finally {
@@ -241,7 +250,7 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
   Future<void> _updateEmail() async {
     if (_firebaseUser == null) return;
     final newEmail = _emailController.text.trim();
-    
+
     if (newEmail == _firebaseUser!.email) return;
     if (newEmail.isEmpty || !newEmail.contains('@')) {
       _showErrorSnackBar('有効なメールアドレスを入力してください');
@@ -255,11 +264,12 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final credential = EmailAuthProvider.credential(email: _firebaseUser!.email!, password: password);
+      final credential = EmailAuthProvider.credential(
+          email: _firebaseUser!.email!, password: password);
       await _firebaseUser!.reauthenticateWithCredential(credential);
 
-      await _firebaseUser!.verifyBeforeUpdateEmail(newEmail); 
-      
+      await _firebaseUser!.verifyBeforeUpdateEmail(newEmail);
+
       _showSuccessSnackBar('新しいメールアドレスに確認メールを送信しました。リンクをクリックして変更を完了してください。');
     } catch (e) {
       _showErrorSnackBar('メールアドレスの変更に失敗しました: $e');
@@ -293,11 +303,12 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final credential = EmailAuthProvider.credential(email: _firebaseUser!.email!, password: currentPassword);
+      final credential = EmailAuthProvider.credential(
+          email: _firebaseUser!.email!, password: currentPassword);
       await _firebaseUser!.reauthenticateWithCredential(credential);
 
       await _firebaseUser!.updatePassword(_newPasswordController.text);
-      
+
       _currentPasswordController.clear();
       _newPasswordController.clear();
       _confirmNewPasswordController.clear();
@@ -318,13 +329,15 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final credential = EmailAuthProvider.credential(email: _firebaseUser!.email!, password: password);
+      final credential = EmailAuthProvider.credential(
+          email: _firebaseUser!.email!, password: password);
       await _firebaseUser!.reauthenticateWithCredential(credential);
 
       await _firebaseUser!.delete();
 
       if (mounted) {
-        Navigator.of(context).pushNamedAndRemoveUntil(AppRoutes.login, (route) => false);
+        Navigator.of(context)
+            .pushNamedAndRemoveUntil(AppRoutes.login, (route) => false);
       }
     } catch (e) {
       _showErrorSnackBar('アカウントの削除に失敗しました: $e');
@@ -340,7 +353,9 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
 
   void _showErrorSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), backgroundColor: Theme.of(context).colorScheme.error),
+      SnackBar(
+          content: Text(message),
+          backgroundColor: Theme.of(context).colorScheme.error),
     );
   }
 
@@ -373,16 +388,22 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
                           onTap: _pickImage,
                           child: CircleAvatar(
                             radius: 12.w,
-                            backgroundColor: theme.colorScheme.outline.withOpacity(0.3),
+                            backgroundColor:
+                                theme.colorScheme.outline.withOpacity(0.3),
                             backgroundImage: _imageBytes != null
                                 ? MemoryImage(_imageBytes!)
                                 : (_imageFile != null
                                     ? FileImage(_imageFile!)
                                     : (_userModel?.profileImageUrl != null
-                                        ? NetworkImage(_userModel!.profileImageUrl!) as ImageProvider
+                                        ? NetworkImage(
+                                                _userModel!.profileImageUrl!)
+                                            as ImageProvider
                                         : null)),
-                            child: (_imageBytes == null && _imageFile == null && _userModel?.profileImageUrl == null)
-                                ? Icon(Icons.person, size: 12.w, color: Colors.grey)
+                            child: (_imageBytes == null &&
+                                    _imageFile == null &&
+                                    _userModel?.profileImageUrl == null)
+                                ? Icon(Icons.person,
+                                    size: 12.w, color: Colors.grey)
                                 : null,
                           ),
                         ),
@@ -395,7 +416,8 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
                               color: theme.colorScheme.primary,
                               shape: BoxShape.circle,
                             ),
-                            child: const Icon(Icons.camera_alt, color: Colors.white, size: 20),
+                            child: const Icon(Icons.camera_alt,
+                                color: Colors.white, size: 20),
                           ),
                         ),
                       ],
@@ -404,7 +426,9 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
                   SizedBox(height: 4.h),
 
                   // --- 2. 基本情報設定 ---
-                  Text('基本情報', style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
+                  Text('基本情報',
+                      style: theme.textTheme.titleLarge
+                          ?.copyWith(fontWeight: FontWeight.bold)),
                   SizedBox(height: 2.h),
                   TextFormField(
                     controller: _userNameController,
@@ -425,7 +449,9 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
                   Divider(height: 6.h),
 
                   // --- 3. メールアドレス設定 ---
-                  Text('メールアドレス変更', style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
+                  Text('メールアドレス変更',
+                      style: theme.textTheme.titleLarge
+                          ?.copyWith(fontWeight: FontWeight.bold)),
                   SizedBox(height: 2.h),
                   TextFormField(
                     controller: _emailController,
@@ -447,7 +473,9 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
                   Divider(height: 6.h),
 
                   // --- 4. パスワード変更 ---
-                  Text('パスワード変更', style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
+                  Text('パスワード変更',
+                      style: theme.textTheme.titleLarge
+                          ?.copyWith(fontWeight: FontWeight.bold)),
                   SizedBox(height: 2.h),
                   TextFormField(
                     controller: _currentPasswordController,
@@ -487,7 +515,10 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
                   Divider(height: 6.h),
 
                   // --- 5. アカウント削除 ---
-                  Text('危険な操作', style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold, color: theme.colorScheme.error)),
+                  Text('危険な操作',
+                      style: theme.textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: theme.colorScheme.error)),
                   SizedBox(height: 2.h),
                   SizedBox(
                     width: double.infinity,
@@ -496,19 +527,31 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
                         backgroundColor: theme.colorScheme.errorContainer,
                         foregroundColor: theme.colorScheme.onErrorContainer,
                       ),
-                      onPressed: _isLoading ? null : () {
-                        showDialog(
-                          context: context,
-                          builder: (context) => AlertDialog(
-                            title: const Text('アカウント削除'),
-                            content: const Text('本当にアカウントを削除しますか？この操作は取り消せません。'),
-                            actions: [
-                              TextButton(onPressed: () => Navigator.pop(context), child: const Text('キャンセル')),
-                              TextButton(onPressed: () { Navigator.pop(context); _deleteAccount(); }, child: const Text('削除する', style: TextStyle(color: Colors.red))),
-                            ],
-                          ),
-                        );
-                      },
+                      onPressed: _isLoading
+                          ? null
+                          : () {
+                              showDialog(
+                                context: context,
+                                builder: (context) => AlertDialog(
+                                  title: const Text('アカウント削除'),
+                                  content: const Text(
+                                      '本当にアカウントを削除しますか？この操作は取り消せません。'),
+                                  actions: [
+                                    TextButton(
+                                        onPressed: () => Navigator.pop(context),
+                                        child: const Text('キャンセル')),
+                                    TextButton(
+                                        onPressed: () {
+                                          Navigator.pop(context);
+                                          _deleteAccount();
+                                        },
+                                        child: const Text('削除する',
+                                            style:
+                                                TextStyle(color: Colors.red))),
+                                  ],
+                                ),
+                              );
+                            },
                       child: const Text('アカウントを削除'),
                     ),
                   ),

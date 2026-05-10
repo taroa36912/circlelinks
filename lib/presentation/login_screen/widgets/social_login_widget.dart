@@ -7,11 +7,11 @@ class SocialLoginWidget extends StatelessWidget {
   // Googleログイン用のコールバック関数
   final Future<void> Function() onGoogleLogin;
   // 1. LINEログイン用のコールバック関数を追加
-  final Future<void> Function() onLineLogin; 
+  final Future<void> Function() onLineLogin;
 
   const SocialLoginWidget({
     super.key,
-    required this.onGoogleLogin, 
+    required this.onGoogleLogin,
     required this.onLineLogin, // 2. コンストラクタで必須にする
   });
 
@@ -48,45 +48,6 @@ class SocialLoginWidget extends StatelessWidget {
 
         SizedBox(height: 3.h),
 
-        // University SSO Button (ダミー処理)
-        SizedBox(
-          width: double.infinity,
-          height: 6.h,
-          child: OutlinedButton.icon(
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('大学SSOでのログインは準備中です'),
-                  duration: Duration(seconds: 2),
-                ),
-              );
-            },
-            icon: CustomIconWidget(
-              iconName: 'school',
-              color: AppTheme.lightTheme.colorScheme.primary,
-              size: 20,
-            ),
-            label: Text(
-              '大学アカウントでログイン',
-              style: AppTheme.lightTheme.textTheme.titleMedium?.copyWith(
-                color: AppTheme.lightTheme.colorScheme.primary,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            style: OutlinedButton.styleFrom(
-              side: BorderSide(
-                color: AppTheme.lightTheme.colorScheme.primary,
-                width: 1.5,
-              ),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-          ),
-        ),
-
-        SizedBox(height: 2.h),
-
         // Google Login Button
         SizedBox(
           width: double.infinity,
@@ -99,7 +60,8 @@ class SocialLoginWidget extends StatelessWidget {
               decoration: const BoxDecoration(
                 shape: BoxShape.circle,
               ),
-              child: Image.asset( // ローカルアセットを使用
+              child: Image.asset(
+                // ローカルアセットを使用
                 'assets/images/g-logo.png',
                 width: 20,
                 height: 20,
@@ -133,11 +95,11 @@ class SocialLoginWidget extends StatelessWidget {
           height: 6.h,
           child: OutlinedButton.icon(
             // 3. onPressed を親から渡された onLineLogin に変更
-            onPressed: onLineLogin, 
+            onPressed: onLineLogin,
             icon: Image.asset(
               'assets/images/l-logo.png',
               width: 20,
-              height: 20,              
+              height: 20,
             ),
             label: Text(
               'LINEでログイン',

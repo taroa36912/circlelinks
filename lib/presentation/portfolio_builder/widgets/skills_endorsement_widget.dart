@@ -6,13 +6,17 @@ import '../../../core/app_export.dart';
 class SkillsEndorsementWidget extends StatefulWidget {
   final List<Map<String, dynamic>> skills;
   final Function(String) onRequestEndorsement;
-  final Function(String) onAddSkill;
+  final Future<void> Function(String) onAddSkill;
+  final Function(Map<String, dynamic>) onEditSkill;
+  final Function(Map<String, dynamic>) onDeleteSkill;
 
   const SkillsEndorsementWidget({
     super.key,
     required this.skills,
     required this.onRequestEndorsement,
     required this.onAddSkill,
+    required this.onEditSkill,
+    required this.onDeleteSkill,
   });
 
   @override
@@ -126,8 +130,9 @@ class _SkillsEndorsementWidgetState extends State<SkillsEndorsementWidget> {
     final category = skill['category'] as String? ?? 'Technical';
     final categoryColor = _getCategoryColor(category);
 
-    return GestureDetector(
-      onTap: () => widget.onRequestEndorsement(skill['name'] as String? ?? ''),
+    return InkWell(
+      onTap: () => _showSkillActions(skill),
+      borderRadius: BorderRadius.circular(6.w),
       child: Container(
         padding: EdgeInsets.symmetric(horizontal: 3.w, vertical: 1.h),
         decoration: BoxDecoration(
@@ -167,6 +172,71 @@ class _SkillsEndorsementWidgetState extends State<SkillsEndorsementWidget> {
               ),
             ],
           ],
+        ),
+      ),
+    );
+  }
+
+  void _showSkillActions(Map<String, dynamic> skill) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.surface,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(6.w)),
+        ),
+        child: SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 10.w,
+                height: 0.5.h,
+                margin: EdgeInsets.symmetric(vertical: 2.h),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.outline,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              ListTile(
+                leading: CustomIconWidget(
+                  iconName: 'edit',
+                  color: Theme.of(context).colorScheme.primary,
+                  size: 24,
+                ),
+                title: const Text('編集'),
+                onTap: () {
+                  Navigator.pop(context);
+                  widget.onEditSkill(skill);
+                },
+              ),
+              ListTile(
+                leading: CustomIconWidget(
+                  iconName: 'delete',
+                  color: AppTheme.error,
+                  size: 24,
+                ),
+                title: const Text('削除'),
+                onTap: () {
+                  Navigator.pop(context);
+                  widget.onDeleteSkill(skill);
+                },
+              ),
+              ListTile(
+                leading: CustomIconWidget(
+                  iconName: 'thumb_up',
+                  color: AppTheme.success,
+                  size: 24,
+                ),
+                title: const Text('推薦を依頼'),
+                onTap: () {
+                  Navigator.pop(context);
+                  widget.onRequestEndorsement(skill['name'] as String? ?? '');
+                },
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -239,11 +309,13 @@ class _SkillsEndorsementWidgetState extends State<SkillsEndorsementWidget> {
             child: const Text('Cancel'),
           ),
           ElevatedButton(
-            onPressed: () {
+            onPressed: () async {
               if (_skillController.text.isNotEmpty) {
-                widget.onAddSkill(_skillController.text);
+                await widget.onAddSkill(_skillController.text);
                 _skillController.clear();
-                Navigator.pop(context);
+                if (context.mounted) {
+                  Navigator.pop(context);
+                }
               }
             },
             child: const Text('Add Skill'),

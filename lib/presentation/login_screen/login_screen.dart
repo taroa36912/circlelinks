@@ -118,11 +118,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
             context, AppRoutes.circleDiscovery); // 修正
       }
     } catch (e) {
-      setState(() {
-        _isLoading = false;
-      });
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        setState(() {
+          _isLoading = false;
+        });
+        final messenger = ScaffoldMessenger.of(context);
+        messenger.showSnackBar(
           SnackBar(
             content: Text('ログインに失敗しました: $e'),
             backgroundColor: AppTheme.lightTheme.colorScheme.error,
@@ -131,7 +132,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
               label: '閉じる',
               textColor: Colors.white,
               onPressed: () {
-                ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                messenger.hideCurrentSnackBar();
               },
             ),
           ),
@@ -185,11 +186,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
         });
       }
     } catch (e) {
-      setState(() {
-        _isLoading = false;
-      });
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        setState(() {
+          _isLoading = false;
+        });
+        final messenger = ScaffoldMessenger.of(context);
+        messenger.showSnackBar(
           SnackBar(
             content: Text('Googleログインに失敗しました: $e'),
             backgroundColor: AppTheme.lightTheme.colorScheme.error,
@@ -198,7 +200,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
               label: '閉じる',
               textColor: Colors.white,
               onPressed: () {
-                ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                messenger.hideCurrentSnackBar();
               },
             ),
           ),
@@ -250,11 +252,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
         });
       }
     } catch (e) {
-      setState(() {
-        _isLoading = false;
-      });
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        setState(() {
+          _isLoading = false;
+        });
+        final messenger = ScaffoldMessenger.of(context);
+        messenger.showSnackBar(
           SnackBar(
             content: Text('LINEログインに失敗しました: $e'),
             backgroundColor: AppTheme.lightTheme.colorScheme.error,
@@ -262,7 +265,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
               label: '閉じる',
               textColor: Colors.white,
               onPressed: () {
-                ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                messenger.hideCurrentSnackBar();
               },
             ),
           ),
@@ -471,7 +474,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
             // Biometric Prompt Overlay
             if (_showBiometricPrompt)
               Container(
-                color: Colors.black.withOpacity(0.5),
+                color: Colors.black.withValues(alpha: 0.5),
                 child: Center(
                   child: BiometricPromptWidget(
                     onBiometricSuccess: _handleBiometricSuccess,
@@ -483,7 +486,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
             // Loading Indicator Overlay
             if (_isLoading)
               Container(
-                color: Colors.black.withOpacity(0.3),
+                color: Colors.black.withValues(alpha: 0.3),
                 child: const Center(
                   child: CircularProgressIndicator(),
                 ),

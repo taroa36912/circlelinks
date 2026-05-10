@@ -1,4 +1,5 @@
 import 'package:cloud_functions/cloud_functions.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_stripe/flutter_stripe.dart';
 import 'package:sizer/sizer.dart';
@@ -9,12 +10,14 @@ class ActionButtonsWidget extends StatefulWidget {
   final Map<String, dynamic> eventData;
   final String currentUserStatus;
   final Function(String) onStatusChanged;
+  final VoidCallback onCollapse;
 
   const ActionButtonsWidget({
     super.key,
     required this.eventData,
     required this.currentUserStatus,
     required this.onStatusChanged,
+    required this.onCollapse,
   });
 
   @override
@@ -43,12 +46,40 @@ class _ActionButtonsWidgetState extends State<ActionButtonsWidget> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            _buildPanelHeader(),
+            SizedBox(height: 1.5.h),
             _buildRSVPButtons(),
             SizedBox(height: 2.h),
             _buildPaymentSection(),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildPanelHeader() {
+    return Row(
+      children: [
+        Expanded(
+          child: Text(
+            '出欠・支払い',
+            style: AppTheme.lightTheme.textTheme.titleSmall?.copyWith(
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+        IconButton(
+          tooltip: '非表示',
+          onPressed: widget.onCollapse,
+          icon: CustomIconWidget(
+            iconName: 'keyboard_arrow_down',
+            color: AppTheme.lightTheme.colorScheme.onSurfaceVariant,
+            size: 22,
+          ),
+          constraints: const BoxConstraints.tightFor(width: 40, height: 40),
+          padding: EdgeInsets.zero,
+        ),
+      ],
     );
   }
 
@@ -171,6 +202,7 @@ class _ActionButtonsWidgetState extends State<ActionButtonsWidget> {
     final paymentStatus =
         widget.eventData['paymentStatus'] as String? ?? 'pending';
     final amount = widget.eventData['amount'] as String? ?? '¥3,500';
+    final isPending = paymentStatus == 'pending';
 
     return Container(
       padding: EdgeInsets.all(3.w),
@@ -183,10 +215,11 @@ class _ActionButtonsWidgetState extends State<ActionButtonsWidget> {
         ),
       ),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Container(
-            width: 10.w,
-            height: 10.w,
+            width: 44,
+            height: 44,
             decoration: BoxDecoration(
               color: _getPaymentIconColor(paymentStatus),
               shape: BoxShape.circle,
@@ -200,62 +233,65 @@ class _ActionButtonsWidgetState extends State<ActionButtonsWidget> {
             ),
           ),
           SizedBox(width: 3.w),
-          // 💡 修正: Expandedの割合(flex)を指定し、ボタンとスペースを分け合うようにした
           Expanded(
-            flex: 3,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
                   _getPaymentStatusText(paymentStatus),
-                  style: AppTheme.lightTheme.textTheme.titleMedium?.copyWith(
+                  style: AppTheme.lightTheme.textTheme.titleSmall?.copyWith(
                     color: _getPaymentTextColor(paymentStatus),
+                    fontWeight: FontWeight.w600,
                   ),
-                  overflow: TextOverflow.ellipsis, // 💡 はみ出し防止
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
                 ),
                 Text(
                   amount,
                   style: AppTheme.lightTheme.textTheme.bodyMedium?.copyWith(
                     color: AppTheme.lightTheme.colorScheme.onSurfaceVariant,
                   ),
-                  overflow: TextOverflow.ellipsis, // 💡 はみ出し防止
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
                 ),
               ],
             ),
           ),
-          if (paymentStatus == 'pending') ...[
-            SizedBox(width: 2.w),
-            // 💡 修正: ボタンもExpandedで囲み、画面を突き破らないようにした
-            Expanded(
-              flex: 2,
-              child: _isProcessingPayment
-                  ? Align(
-                      alignment: Alignment.centerRight,
-                      child: SizedBox(
-                        width: 6.w,
-                        height: 6.w,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: AppTheme.lightTheme.colorScheme.primary,
-                        ),
-                      ),
-                    )
-                  : ElevatedButton(
+          if (isPending) ...[
+            const SizedBox(width: 12),
+            _isProcessingPayment
+                ? SizedBox(
+                    width: 32,
+                    height: 32,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: AppTheme.lightTheme.colorScheme.primary,
+                    ),
+                  )
+                : ConstrainedBox(
+                    constraints:
+                        const BoxConstraints(minWidth: 88, maxWidth: 112),
+                    child: ElevatedButton(
                       onPressed: _processPayment,
                       style: ElevatedButton.styleFrom(
                         backgroundColor:
                             AppTheme.lightTheme.colorScheme.primary,
                         foregroundColor: Colors.white,
-                        padding: EdgeInsets.symmetric(
-                            horizontal: 2.w, vertical: 1.5.h), // 余白を調整
+                        minimumSize: const Size(88, 44),
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        textStyle: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
-                      // 💡 修正: スマホが細すぎる場合は文字を自動縮小させる
-                      child: const FittedBox(
-                        fit: BoxFit.scaleDown,
-                        child: Text('Pay Now'),
+                      child: const Text(
+                        '支払う',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
-            ),
+                  ),
           ],
         ],
       ),
@@ -321,11 +357,11 @@ class _ActionButtonsWidgetState extends State<ActionButtonsWidget> {
   String _getPaymentStatusText(String status) {
     switch (status.toLowerCase()) {
       case 'paid':
-        return 'Payment Complete';
+        return '支払い済み';
       case 'fronted':
-        return 'Payment Fronted';
+        return '立替済み';
       default:
-        return 'Payment Pending';
+        return '支払い待ち';
     }
   }
 
@@ -447,6 +483,10 @@ class _ActionButtonsWidgetState extends State<ActionButtonsWidget> {
     setState(() => _isProcessingPayment = true);
 
     try {
+      if (kIsWeb) {
+        throw Exception('Web版では現在カード決済を利用できません。モバイルアプリから支払いを行ってください。');
+      }
+
       final rawAmount = widget.eventData['amount'] as String? ?? '';
       final cleanedAmount = rawAmount.replaceAll(RegExp(r'[^0-9]'), '');
       final amount = int.tryParse(cleanedAmount) ?? 0;
@@ -481,7 +521,7 @@ class _ActionButtonsWidgetState extends State<ActionButtonsWidget> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: const Text('Payment processed successfully via Stripe'),
+            content: const Text('支払いが完了しました'),
             behavior: SnackBarBehavior.floating,
             backgroundColor: AppTheme.lightTheme.colorScheme.tertiary,
           ),
@@ -492,6 +532,17 @@ class _ActionButtonsWidgetState extends State<ActionButtonsWidget> {
           error.error.message ??
           'Stripe payment failed or was canceled.';
       if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(message),
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: AppTheme.error,
+          ),
+        );
+      }
+    } on FirebaseFunctionsException catch (error) {
+      if (mounted) {
+        final message = _paymentFunctionErrorMessage(error);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(message),
@@ -514,6 +565,21 @@ class _ActionButtonsWidgetState extends State<ActionButtonsWidget> {
       if (mounted) {
         setState(() => _isProcessingPayment = false);
       }
+    }
+  }
+
+  String _paymentFunctionErrorMessage(FirebaseFunctionsException error) {
+    switch (error.code) {
+      case 'failed-precondition':
+        return 'Stripe決済のサーバー設定が未完了です。管理者に設定を確認してください。';
+      case 'invalid-argument':
+        return '支払い金額が正しくありません。';
+      case 'unavailable':
+        return '決済サーバーに接続できません。時間を置いて再度お試しください。';
+      case 'internal':
+        return '決済サーバーでエラーが発生しました。Stripeの秘密鍵とFunctionsのログを確認してください。';
+      default:
+        return error.message ?? '決済処理に失敗しました。';
     }
   }
 }

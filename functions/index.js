@@ -3,11 +3,24 @@ const admin = require("firebase-admin");
 const axios = require("axios");
 const Stripe = require("stripe");
 
-const stripe = Stripe("YOUR_STRIPE_SECRET_KEY");
-
 admin.initializeApp();
 
 const LINE_CHANNEL_ID = "2008357841"; 
+
+function getStripeClient() {
+  const secretKey =
+    process.env.STRIPE_SECRET_KEY ||
+    functions.config().stripe?.secret_key;
+
+  if (!secretKey || secretKey === "YOUR_STRIPE_SECRET_KEY") {
+    throw new functions.https.HttpsError(
+      "failed-precondition",
+      "Stripe secret key is not configured."
+    );
+  }
+
+  return Stripe(secretKey);
+}
 
 exports.verifyLineToken = functions.region('asia-northeast1').https.onCall(async (data, context) => {
   const idToken = data.idToken;
@@ -76,6 +89,7 @@ exports.createStripePaymentIntent = functions.region('asia-northeast1').https.on
   }
 
   try {
+    const stripe = getStripeClient();
     const paymentIntent = await stripe.paymentIntents.create({
       amount,
       currency: 'jpy',
@@ -86,6 +100,10 @@ exports.createStripePaymentIntent = functions.region('asia-northeast1').https.on
       clientSecret: paymentIntent.client_secret,
     };
   } catch (error) {
+    if (error instanceof functions.https.HttpsError) {
+      throw error;
+    }
+
     console.error('Error creating Stripe PaymentIntent:', error);
     throw new functions.https.HttpsError(
       'internal',

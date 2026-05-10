@@ -396,7 +396,7 @@ class _EventCreationState extends ConsumerState<EventCreation> {
       child: Padding(
         padding: EdgeInsets.all(4.w),
         child: DropdownButtonFormField<String>(
-          value: _myAdminCircles.any((circle) => circle.id == _circleId)
+          initialValue: _myAdminCircles.any((circle) => circle.id == _circleId)
               ? _circleId
               : null,
           decoration: const InputDecoration(

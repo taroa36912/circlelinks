@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:sizer/sizer.dart';
 import '../../core/app_export.dart';
-import '../../routes/app_routes.dart';
 import '../../core/models/user_model.dart';
 
 class AppMenuDrawer extends ConsumerStatefulWidget {

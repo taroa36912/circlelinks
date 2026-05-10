@@ -53,6 +53,17 @@ class FirestoreService {
     }
   }
 
+  Stream<UserModel?> getUserStream(String userId) {
+    return _firestore
+        .collection(usersCollection)
+        .doc(userId)
+        .snapshots()
+        .handleError((e) {
+      print("🔥 ERROR in getUserStream: $e");
+      throw e;
+    }).map((doc) => doc.exists ? UserModel.fromFirestore(doc) : null);
+  }
+
   Future<void> updateUser(UserModel user) async {
     try {
       await _firestore
@@ -90,6 +101,11 @@ class FirestoreService {
         profileImageUrl: profileImageUrl ?? existingUser?.profileImageUrl,
         role: resolvedRole,
         accountType: resolvedAccountType,
+        university: existingUser?.university,
+        major: existingUser?.major,
+        portfolioItems: existingUser?.portfolioItems,
+        portfolioAchievements: existingUser?.portfolioAchievements,
+        portfolioSkills: existingUser?.portfolioSkills,
         createdAt: existingUser?.createdAt ?? DateTime.now(),
         updatedAt: DateTime.now(),
       );

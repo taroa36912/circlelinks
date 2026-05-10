@@ -7,6 +7,7 @@ class PortfolioHeaderWidget extends StatelessWidget {
   final String userName;
   final String university;
   final String major;
+  final String? profileImageUrl;
   final double completionPercentage;
   final VoidCallback onEditProfile;
 
@@ -15,6 +16,7 @@ class PortfolioHeaderWidget extends StatelessWidget {
     required this.userName,
     required this.university,
     required this.major,
+    this.profileImageUrl,
     required this.completionPercentage,
     required this.onEditProfile,
   });
@@ -23,6 +25,8 @@ class PortfolioHeaderWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final hasProfileImage =
+        profileImageUrl != null && profileImageUrl!.trim().isNotEmpty;
 
     return Container(
       width: double.infinity,
@@ -102,13 +106,25 @@ class PortfolioHeaderWidget extends StatelessWidget {
                   ),
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(4.w),
-                    child: CustomImageWidget(
-                      imageUrl:
-                          "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?fm=jpg&q=60&w=3000&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8M3x8cGVyc29ufGVufDB8fDB8fHww",
-                      width: 20.w,
-                      height: 20.w,
-                      fit: BoxFit.cover,
-                    ),
+                    child: hasProfileImage
+                        ? CustomImageWidget(
+                            imageUrl: profileImageUrl!,
+                            width: 20.w,
+                            height: 20.w,
+                            fit: BoxFit.cover,
+                          )
+                        : Container(
+                            width: 20.w,
+                            height: 20.w,
+                            color: colorScheme.surfaceContainerHighest,
+                            child: Center(
+                              child: CustomIconWidget(
+                                iconName: 'person',
+                                color: colorScheme.onSurfaceVariant,
+                                size: 8.w,
+                              ),
+                            ),
+                          ),
                   ),
                 ),
                 SizedBox(width: 4.w),

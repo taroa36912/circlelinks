@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sizer/sizer.dart';
 import '../../core/app_export.dart';
-import '../../core/services/firestore_service.dart';
 
 class QRScanScreen extends ConsumerStatefulWidget {
   const QRScanScreen({super.key});

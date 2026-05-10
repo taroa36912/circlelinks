@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:sizer/sizer.dart';
 
 import '../../core/app_export.dart';
-import '../../core/models/connection_request_model.dart'; // ConnectionRequestModel
+// ConnectionRequestModel
 
 class CircleProfile extends ConsumerStatefulWidget {
   const CircleProfile({super.key});

@@ -35,7 +35,9 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
       return;
     }
 
-    setState(() { _isLoading = true; });
+    setState(() {
+      _isLoading = true;
+    });
 
     try {
       final authService = ref.read(firebaseAuthServiceProvider);
@@ -48,11 +50,17 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
       );
 
       if (credential != null && credential.user != null) {
+        final email = _emailController.text.trim();
+        final role = UserModel.roleFromEmail(email);
+        final accountType = UserModel.accountTypeFromRole(role);
+
         // 2. Firestoreにユーザー情報 (UserModel) を作成
         final newUser = UserModel(
           id: credential.user!.uid,
-          email: _emailController.text.trim(),
+          email: email,
           userName: _userNameController.text.trim(), // 👈 入力された名前を使用
+          role: role,
+          accountType: accountType,
           createdAt: DateTime.now(),
           updatedAt: DateTime.now(),
         );
@@ -74,7 +82,9 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
       }
     } finally {
       if (mounted) {
-        setState(() { _isLoading = false; });
+        setState(() {
+          _isLoading = false;
+        });
       }
     }
   }
@@ -82,16 +92,19 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
   // ... (バリデーションメソッドは変更なし) ...
   String? _validateEmail(String? value) {
     if (value == null || value.isEmpty) return 'メールアドレスを入力してください';
-    if (!RegExp(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$').hasMatch(value)) {
+    if (!RegExp(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$')
+        .hasMatch(value)) {
       return '有効なメールアドレスを入力してください';
     }
     return null;
   }
+
   String? _validatePassword(String? value) {
     if (value == null || value.isEmpty) return 'パスワードを入力してください';
     if (value.length < 6) return 'パスワードは6文字以上で入力してください';
     return null;
   }
+
   String? _validateConfirmPassword(String? value) {
     if (value == null || value.isEmpty) return 'パスワード（確認）を入力してください';
     if (value != _passwordController.text) return 'パスワードが一致しません';
@@ -117,9 +130,19 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               SizedBox(height: 2.h),
-              Text('CircleLinkへようこそ', style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w600,),),
+              Text(
+                'CircleLinkへようこそ',
+                style: theme.textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
               SizedBox(height: 1.h),
-              Text('まずは個人用アカウントを作成しましょう。', style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant,),),
+              Text(
+                'まずは個人用アカウントを作成しましょう。',
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
               SizedBox(height: 4.h),
 
               // ⬇️ ユーザー名入力フィールド (追加) ⬇️
@@ -130,7 +153,8 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                   hintText: '例: 山田 太郎',
                   prefixIcon: Icon(Icons.person),
                 ),
-                validator: (value) => value == null || value.isEmpty ? 'ユーザー名を入力してください' : null,
+                validator: (value) =>
+                    value == null || value.isEmpty ? 'ユーザー名を入力してください' : null,
               ),
               SizedBox(height: 2.h),
               // ⬆️ ---------------------- ⬆️
@@ -138,7 +162,10 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
               TextFormField(
                 controller: _emailController,
                 keyboardType: TextInputType.emailAddress,
-                decoration: const InputDecoration(labelText: 'メールアドレス', hintText: 'example@university.ac.jp', prefixIcon: Icon(Icons.email)),
+                decoration: const InputDecoration(
+                    labelText: 'メールアドレス',
+                    hintText: 'example@university.ac.jp',
+                    prefixIcon: Icon(Icons.email)),
                 validator: _validateEmail,
               ),
               SizedBox(height: 2.h),
@@ -150,8 +177,14 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                   hintText: '6文字以上で入力',
                   prefixIcon: const Icon(Icons.lock),
                   suffixIcon: IconButton(
-                    icon: Icon(_isPasswordVisible ? Icons.visibility_off : Icons.visibility),
-                    onPressed: () { setState(() { _isPasswordVisible = !_isPasswordVisible; }); },
+                    icon: Icon(_isPasswordVisible
+                        ? Icons.visibility_off
+                        : Icons.visibility),
+                    onPressed: () {
+                      setState(() {
+                        _isPasswordVisible = !_isPasswordVisible;
+                      });
+                    },
                   ),
                 ),
                 validator: _validatePassword,
@@ -160,15 +193,22 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
               TextFormField(
                 controller: _confirmPasswordController,
                 obscureText: !_isPasswordVisible,
-                decoration: const InputDecoration(labelText: 'パスワード（確認）', prefixIcon: Icon(Icons.lock_outline)),
+                decoration: const InputDecoration(
+                    labelText: 'パスワード（確認）',
+                    prefixIcon: Icon(Icons.lock_outline)),
                 validator: _validateConfirmPassword,
               ),
               SizedBox(height: 5.h),
               ElevatedButton(
                 onPressed: _isLoading ? null : _handleSignUp,
-                style: ElevatedButton.styleFrom(padding: EdgeInsets.symmetric(vertical: 2.h)),
+                style: ElevatedButton.styleFrom(
+                    padding: EdgeInsets.symmetric(vertical: 2.h)),
                 child: _isLoading
-                    ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2, color: Colors.white))
                     : const Text('アカウントを作成'),
               ),
             ],

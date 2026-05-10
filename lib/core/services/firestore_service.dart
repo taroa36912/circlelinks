@@ -53,6 +53,17 @@ class FirestoreService {
     }
   }
 
+  Stream<UserModel?> getUserStream(String userId) {
+    return _firestore
+        .collection(usersCollection)
+        .doc(userId)
+        .snapshots()
+        .handleError((e) {
+      print("🔥 ERROR in getUserStream: $e");
+      throw e;
+    }).map((doc) => doc.exists ? UserModel.fromFirestore(doc) : null);
+  }
+
   Future<void> updateUser(UserModel user) async {
     try {
       await _firestore
@@ -62,6 +73,53 @@ class FirestoreService {
     } catch (e) {
       print("🔥 ERROR in updateUser: $e");
       throw Exception('ユーザー情報の更新に失敗しました: $e');
+    }
+  }
+
+  Future<UserModel> upsertAuthenticatedUser({
+    required String uid,
+    required String email,
+    String? userName,
+    String? profileImageUrl,
+  }) async {
+    try {
+      final existingUser = await getUser(uid);
+      final resolvedEmail = email.trim();
+      final resolvedRole = UserModel.roleFromEmail(resolvedEmail);
+      final resolvedAccountType = UserModel.accountTypeFromRole(resolvedRole);
+      final resolvedUserName = (userName != null && userName.trim().isNotEmpty)
+          ? userName.trim()
+          : existingUser?.userName ??
+              (resolvedEmail.isNotEmpty
+                  ? resolvedEmail.split('@').first
+                  : '名無しユーザー');
+
+      final user = UserModel(
+        id: uid,
+        email: resolvedEmail,
+        userName: resolvedUserName,
+        profileImageUrl: profileImageUrl ?? existingUser?.profileImageUrl,
+        role: resolvedRole,
+        accountType: resolvedAccountType,
+        university: existingUser?.university,
+        major: existingUser?.major,
+        portfolioItems: existingUser?.portfolioItems,
+        portfolioAchievements: existingUser?.portfolioAchievements,
+        portfolioSkills: existingUser?.portfolioSkills,
+        createdAt: existingUser?.createdAt ?? DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
+
+      if (existingUser == null) {
+        await createUser(user);
+      } else {
+        await updateUser(user);
+      }
+
+      return user;
+    } catch (e) {
+      print("🔥 ERROR in upsertAuthenticatedUser: $e");
+      throw Exception('認証ユーザー情報の保存に失敗しました: $e');
     }
   }
 
@@ -498,7 +556,7 @@ class FirestoreService {
     try {
       final query = _firestore
           .collection(dmChannelsCollection)
-          .where('participants', arrayContains: individualId);
+          .where('individualId', isEqualTo: individualId);
       final snapshot = await query.get();
       final existingChannels = snapshot.docs.where((doc) {
         final data = doc.data();

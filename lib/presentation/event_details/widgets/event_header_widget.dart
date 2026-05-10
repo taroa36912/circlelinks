@@ -147,10 +147,13 @@ class EventHeaderWidget extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
-                _buildShareOption(context, 'link', 'Copy Link'),
-                _buildShareOption(context, 'message', 'Message'),
-                _buildShareOption(context, 'email', 'Email'),
-                _buildShareOption(context, 'more_horiz', 'More'),
+                Expanded(
+                    child: _buildShareOption(context, 'link', 'Copy Link')),
+                Expanded(
+                    child: _buildShareOption(context, 'message', 'Message')),
+                Expanded(child: _buildShareOption(context, 'email', 'Email')),
+                Expanded(
+                    child: _buildShareOption(context, 'more_horiz', 'More')),
               ],
             ),
             SizedBox(height: 2.h),
@@ -163,10 +166,11 @@ class EventHeaderWidget extends StatelessWidget {
   Widget _buildShareOption(
       BuildContext context, String iconName, String label) {
     return Column(
+      mainAxisSize: MainAxisSize.min,
       children: [
         Container(
-          width: 14.w,
-          height: 14.w,
+          width: 56,
+          height: 56,
           decoration: BoxDecoration(
             color: AppTheme.lightTheme.colorScheme.primaryContainer,
             borderRadius: BorderRadius.circular(16),
@@ -183,6 +187,9 @@ class EventHeaderWidget extends StatelessWidget {
         Text(
           label,
           style: AppTheme.lightTheme.textTheme.bodySmall,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          textAlign: TextAlign.center,
         ),
       ],
     );

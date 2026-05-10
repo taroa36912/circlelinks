@@ -5,13 +5,11 @@ import '../../../core/app_export.dart';
 
 class LoginFormWidget extends ConsumerStatefulWidget {
   final Function(String email, String password) onLogin;
-  // final VoidCallback onGoogleLogin; // 削除
   final bool isLoading;
 
   const LoginFormWidget({
     super.key,
     required this.onLogin,
-    // required this.onGoogleLogin, // 削除
     required this.isLoading,
   });
 
@@ -84,7 +82,6 @@ class _LoginFormWidgetState extends ConsumerState<LoginFormWidget> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Email/Username Field
           TextFormField(
             controller: _emailController,
             keyboardType: TextInputType.emailAddress,
@@ -141,10 +138,7 @@ class _LoginFormWidgetState extends ConsumerState<LoginFormWidget> {
             validator: _validateEmail,
             style: AppTheme.lightTheme.textTheme.bodyLarge,
           ),
-
           SizedBox(height: 2.h),
-
-          // Password Field
           TextFormField(
             controller: _passwordController,
             obscureText: !_isPasswordVisible,
@@ -219,50 +213,16 @@ class _LoginFormWidgetState extends ConsumerState<LoginFormWidget> {
               }
             },
           ),
-
           SizedBox(height: 1.h),
-
-          // Forgot Password Link
           Align(
             alignment: Alignment.centerRight,
             child: TextButton(
-              onPressed: () async {
-                if (_emailController.text.isNotEmpty &&
-                    _isValidEmail(_emailController.text)) {
-                  try {
-                    final authService = ref.read(firebaseAuthServiceProvider);
-                    await authService
-                        .sendPasswordResetEmail(_emailController.text);
-
-                    if (mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('パスワードリセットメールを送信しました'),
-                          backgroundColor: Colors.green,
-                          duration: Duration(seconds: 3),
-                        ),
-                      );
-                    }
-                  } catch (e) {
-                    if (mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text('パスワードリセットに失敗しました: $e'),
-                          backgroundColor: Colors.red,
-                          duration: const Duration(seconds: 3),
-                        ),
-                      );
-                    }
-                  }
-                } else {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('有効なメールアドレスを入力してください'),
-                      backgroundColor: Colors.orange,
-                      duration: Duration(seconds: 2),
-                    ),
-                  );
-                }
+              onPressed: () {
+                Navigator.pushNamed(
+                  context,
+                  AppRoutes.forgotPassword,
+                  arguments: {'email': _emailController.text.trim()},
+                );
               },
               child: Text(
                 'パスワードを忘れましたか？',
@@ -273,79 +233,7 @@ class _LoginFormWidgetState extends ConsumerState<LoginFormWidget> {
               ),
             ),
           ),
-
           SizedBox(height: 3.h),
-
-          // ---------------------------------
-          // ⬇️ Google Login Button (削除) ⬇️
-          // ---------------------------------
-          /*
-          // Google Login Button
-          SizedBox(
-            width: double.infinity,
-            height: 6.h,
-            child: OutlinedButton.icon(
-              onPressed: widget.isLoading ? null : widget.onGoogleLogin,
-              icon: CustomIconWidget(
-                iconName: 'google',
-                color: AppTheme.lightTheme.colorScheme.onSurface,
-                size: 20,
-              ),
-              label: Text(
-                'Googleでログイン',
-                style: AppTheme.lightTheme.textTheme.titleMedium?.copyWith(
-                  color: AppTheme.lightTheme.colorScheme.onSurface,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              style: OutlinedButton.styleFrom(
-                side: BorderSide(
-                  color: AppTheme.lightTheme.colorScheme.outline,
-                  width: 1,
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-            ),
-          ),
-
-          SizedBox(height: 2.h),
-
-          // Divider
-          Row(
-            children: [
-              Expanded(
-                child: Divider(
-                  color: AppTheme.lightTheme.colorScheme.outline,
-                  thickness: 1,
-                ),
-              ),
-              Padding(
-                padding: EdgeInsets.symmetric(horizontal: 2.w),
-                child: Text(
-                  'または',
-                  style: AppTheme.lightTheme.textTheme.bodySmall?.copyWith(
-                    color: AppTheme.lightTheme.colorScheme.onSurfaceVariant,
-                  ),
-                ),
-              ),
-              Expanded(
-                child: Divider(
-                  color: AppTheme.lightTheme.colorScheme.outline,
-                  thickness: 1,
-                ),
-              ),
-            ],
-          ),
-
-          SizedBox(height: 2.h),
-          */
-          // ---------------------------------
-          // ⬆️ 削除完了 ⬆️
-          // ---------------------------------
-
-          // Login Button
           SizedBox(
             width: double.infinity,
             height: 6.h,
@@ -366,14 +254,12 @@ class _LoginFormWidgetState extends ConsumerState<LoginFormWidget> {
                 ),
               ),
               child: widget.isLoading
-                  ? SizedBox(
+                  ? const SizedBox(
                       width: 20,
                       height: 20,
                       child: CircularProgressIndicator(
                         strokeWidth: 2,
-                        valueColor: AlwaysStoppedAnimation<Color>(
-                          Colors.white,
-                        ),
+                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                       ),
                     )
                   : Text(

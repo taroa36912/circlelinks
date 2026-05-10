@@ -20,6 +20,7 @@ import '../presentation/profile_settings/profile_settings_screen.dart';
 import '../presentation/event_management/event_management_screen.dart'; // New
 import '../presentation/event/qr_scan_screen.dart'; // New
 import '../presentation/event/event_list_screen.dart';
+import '../presentation/login_screen/forgot_password_screen.dart';
 import '../presentation/profile/portfolio_screen.dart'; // New
 import '../presentation/joined_circles/joined_circles_screen.dart'; // New
 
@@ -28,6 +29,7 @@ class AppRoutes {
   static const String eventCreation = '/event-creation';
   static const String circleProfile = '/circle-profile';
   static const String login = '/login-screen';
+  static const String forgotPassword = '/forgot-password';
   static const String eventDetails = '/event-details';
   static const String circleDiscovery = '/circle-discovery';
   static const String circleRegistration = '/circle-registration';
@@ -55,6 +57,7 @@ class AppRoutes {
   static Map<String, WidgetBuilder> routes = {
     initial: (context) => const LoginScreen(),
     login: (context) => const LoginScreen(),
+    forgotPassword: (context) => const ForgotPasswordScreen(),
     signup: (context) => const SignupScreen(),
 
     circleDiscovery: (context) => const CircleDiscovery(),

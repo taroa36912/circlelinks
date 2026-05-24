@@ -65,44 +65,84 @@ class _DmChatScreenState extends ConsumerState<DmChatScreen> {
     final channel = await firestoreService.getDmChannel(widget.dmChannelId);
     if (channel == null) return;
 
+    final isAlreadyMember =
+        await firestoreService.isCircleMember(channel.circleId, channel.individualId);
+
     if (!mounted) return;
+
+    final displayRoleController = TextEditingController();
+    final roleTagsController = TextEditingController();
+    final skillTagsController = TextEditingController();
+
     showDialog(
       context: context,
-      // ⬇️ 修正: context を dialogContext にリネームして区別する
       builder: (dialogContext) => AlertDialog(
-        title: const Text('メンバー追加'),
-        content: Text('${channel.individualName}さんを「${channel.circleName}」のメンバーとして追加しますか？'),
+        title: Text(isAlreadyMember ? 'メンバー情報を更新' : 'メンバー追加'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(isAlreadyMember
+                  ? '${channel.individualName}さんは既に「${channel.circleName}」のメンバーです。タグ・役職を更新しますか？'
+                  : '${channel.individualName}さんを「${channel.circleName}」のメンバーとして追加しますか？'),
+              SizedBox(height: 2.h),
+              TextField(
+                controller: displayRoleController,
+                decoration: const InputDecoration(labelText: '役職名', hintText: '例: 会計, 広報'),
+              ),
+              SizedBox(height: 2.h),
+              TextField(
+                controller: roleTagsController,
+                decoration: const InputDecoration(labelText: '役割タグ', hintText: 'カンマ区切り'),
+              ),
+              SizedBox(height: 2.h),
+              TextField(
+                controller: skillTagsController,
+                decoration: const InputDecoration(labelText: 'スキルタグ', hintText: 'カンマ区切り'),
+              ),
+            ],
+          ),
+        ),
         actions: [
           TextButton(
-            // ⬇️ 修正: dialogContext を閉じる
             onPressed: () => Navigator.pop(dialogContext),
             child: const Text('キャンセル'),
           ),
           ElevatedButton(
             onPressed: () async {
-              // ⬇️ 修正: dialogContext を閉じる
               Navigator.pop(dialogContext); 
               try {
-                await firestoreService.addCircleMember(
-                  channel.circleId,
-                  channel.individualId,
-                  'member',
+                await firestoreService.addIndividualToCircleFromDm(
+                  dmChannelId: widget.dmChannelId,
+                  role: 'member',
+                  displayRole: displayRoleController.text.trim().isNotEmpty
+                      ? displayRoleController.text.trim()
+                      : null,
+                  roleTags: roleTagsController.text
+                      .split(',')
+                      .map((s) => s.trim())
+                      .where((s) => s.isNotEmpty)
+                      .toList(),
+                  skillTags: skillTagsController.text
+                      .split(',')
+                      .map((s) => s.trim())
+                      .where((s) => s.isNotEmpty)
+                      .toList(),
                 );
-                // ⬇️ ここの context は DmChatScreen のものになるため安全！
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('メンバーを追加しました！')),
+                    SnackBar(content: Text(isAlreadyMember ? 'メンバー情報を更新しました' : 'メンバーを追加しました！')),
                   );
                 }
               } catch (e) {
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('追加に失敗しました: $e'), backgroundColor: Colors.red),
+                    SnackBar(content: Text('操作に失敗しました: $e'), backgroundColor: Colors.red),
                   );
                 }
               }
             },
-            child: const Text('追加する'),
+            child: Text(isAlreadyMember ? '更新する' : '追加する'),
           ),
         ],
       ),

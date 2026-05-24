@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:rxdart/rxdart.dart'; // 👈 1. 新規追加
 
@@ -11,6 +12,10 @@ import '../models/user_model.dart';
 import '../models/event_model.dart'; // New
 import '../models/attendance_model.dart'; // New
 import '../models/member_model.dart';
+import '../models/project_model.dart';
+import '../models/tag_model.dart';
+import '../models/recruitment_model.dart';
+import '../models/recruitment_application_model.dart';
 
 class FirestoreService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -25,6 +30,10 @@ class FirestoreService {
   static const String usersCollection = 'users';
   static const String eventsCollection = 'events'; // New
   static const String attendancesCollection = 'attendances'; // New
+  static const String projectsCollection = 'projects';
+  static const String tagsCollection = 'tags';
+  static const String recruitmentsCollection = 'recruitments';
+  static const String applicationsCollection = 'applications';
 
   // --- User operations ---
   Future<void> createUser(UserModel user) async {
@@ -53,6 +62,17 @@ class FirestoreService {
     }
   }
 
+  Stream<UserModel?> getUserStream(String userId) {
+    return _firestore
+        .collection(usersCollection)
+        .doc(userId)
+        .snapshots()
+        .handleError((e) {
+      print("🔥 ERROR in getUserStream: $e");
+      throw e;
+    }).map((doc) => doc.exists ? UserModel.fromFirestore(doc) : null);
+  }
+
   Future<void> updateUser(UserModel user) async {
     try {
       await _firestore
@@ -62,6 +82,53 @@ class FirestoreService {
     } catch (e) {
       print("🔥 ERROR in updateUser: $e");
       throw Exception('ユーザー情報の更新に失敗しました: $e');
+    }
+  }
+
+  Future<UserModel> upsertAuthenticatedUser({
+    required String uid,
+    required String email,
+    String? userName,
+    String? profileImageUrl,
+  }) async {
+    try {
+      final existingUser = await getUser(uid);
+      final resolvedEmail = email.trim();
+      final resolvedRole = UserModel.roleFromEmail(resolvedEmail);
+      final resolvedAccountType = UserModel.accountTypeFromRole(resolvedRole);
+      final resolvedUserName = (userName != null && userName.trim().isNotEmpty)
+          ? userName.trim()
+          : existingUser?.userName ??
+              (resolvedEmail.isNotEmpty
+                  ? resolvedEmail.split('@').first
+                  : '名無しユーザー');
+
+      final user = UserModel(
+        id: uid,
+        email: resolvedEmail,
+        userName: resolvedUserName,
+        profileImageUrl: profileImageUrl ?? existingUser?.profileImageUrl,
+        role: resolvedRole,
+        accountType: resolvedAccountType,
+        university: existingUser?.university,
+        major: existingUser?.major,
+        portfolioItems: existingUser?.portfolioItems,
+        portfolioAchievements: existingUser?.portfolioAchievements,
+        portfolioSkills: existingUser?.portfolioSkills,
+        createdAt: existingUser?.createdAt ?? DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
+
+      if (existingUser == null) {
+        await createUser(user);
+      } else {
+        await updateUser(user);
+      }
+
+      return user;
+    } catch (e) {
+      print("🔥 ERROR in upsertAuthenticatedUser: $e");
+      throw Exception('認証ユーザー情報の保存に失敗しました: $e');
     }
   }
 
@@ -498,7 +565,7 @@ class FirestoreService {
     try {
       final query = _firestore
           .collection(dmChannelsCollection)
-          .where('participants', arrayContains: individualId);
+          .where('individualId', isEqualTo: individualId);
       final snapshot = await query.get();
       final existingChannels = snapshot.docs.where((doc) {
         final data = doc.data();
@@ -646,6 +713,53 @@ class FirestoreService {
             snapshot.docs.map((doc) => EventModel.fromFirestore(doc)).toList());
   }
 
+  // --- Legacy attendance operations ---
+  Future<void> rsvpEvent(AttendanceModel attendance) async {
+    try {
+      await _firestore
+          .collection(eventsCollection)
+          .doc(attendance.eventId)
+          .collection(attendancesCollection)
+          .doc(attendance.userId)
+          .set(attendance.toFirestore());
+    } catch (e) {
+      debugPrint("🔥 ERROR in rsvpEvent: $e");
+      throw Exception('イベントへの参加登録に失敗しました: $e');
+    }
+  }
+
+  Stream<List<AttendanceModel>> getEventAttendances(String eventId) {
+    return _firestore
+        .collection(eventsCollection)
+        .doc(eventId)
+        .collection(attendancesCollection)
+        .snapshots()
+        .handleError((e) {
+      debugPrint("🔥 ERROR in getEventAttendances: $e");
+      throw e;
+    }).map((snapshot) => snapshot.docs
+            .map((doc) => AttendanceModel.fromFirestore(doc))
+            .toList());
+  }
+
+  Future<List<EventModel>> getUpcomingEvents() async {
+    try {
+      final now = DateTime.now();
+      final querySnapshot = await _firestore
+          .collection(eventsCollection)
+          .where('startTime', isGreaterThan: Timestamp.fromDate(now))
+          .orderBy('startTime')
+          .limit(20)
+          .get();
+      return querySnapshot.docs
+          .map((doc) => EventModel.fromFirestore(doc))
+          .toList();
+    } catch (e) {
+      debugPrint("🔥 ERROR in getUpcomingEvents: $e");
+      throw Exception('イベント一覧の取得に失敗しました: $e');
+    }
+  }
+
   Future<List<EventModel>> getVisibleEventsForUser(String userId) async {
     try {
       final memberSnapshot = await _firestore
@@ -728,35 +842,717 @@ class FirestoreService {
         ..sort((a, b) => a.startTime.compareTo(b.startTime));
       return sorted;
     } catch (e) {
-      print("🔥 ERROR in getVisibleEventsForUser: $e");
+      debugPrint("🔥 ERROR in getVisibleEventsForUser: $e");
       throw Exception('閲覧可能なイベントの取得に失敗しました: $e');
     }
   }
 
-  Future<List<EventModel>> getUpcomingEvents() async {
+  // --- Project operations ---
+  Future<void> createProject(ProjectModel project) async {
     try {
+      final docRef = project.id.isEmpty
+          ? _firestore.collection(projectsCollection).doc()
+          : _firestore.collection(projectsCollection).doc(project.id);
+
+      final normalizedParticipants = project.participantIds.contains(
+        project.creatorId,
+      )
+          ? project.participantIds
+          : [project.creatorId, ...project.participantIds];
+
       final now = DateTime.now();
-      final querySnapshot = await _firestore
-          .collection(eventsCollection)
-          .where('startTime', isGreaterThan: Timestamp.fromDate(now))
-          .orderBy('startTime')
-          .limit(20)
-          .get();
-      return querySnapshot.docs
-          .map((doc) => EventModel.fromFirestore(doc))
-          .toList();
+      final projectToSave = project.copyWith(
+        id: docRef.id,
+        participantIds: normalizedParticipants.toSet().toList(),
+        createdAt: project.createdAt,
+        updatedAt: now,
+      );
+
+      await docRef.set(projectToSave.toFirestore());
     } catch (e) {
-      print("🔥 ERROR in getUpcomingEvents: $e");
-      throw Exception('イベント一覧の取得に失敗しました: $e');
+      debugPrint("🔥 ERROR in createProject: $e");
+      throw Exception('プロジェクトの作成に失敗しました: $e');
     }
   }
 
-  // --- Attendance operations ---
-  Future<void> rsvpEvent(AttendanceModel attendance) async {
+  Stream<List<ProjectModel>> getOpenProjects() {
+    return _firestore
+        .collection(projectsCollection)
+        .where('status', isEqualTo: 'open')
+        .orderBy('createdAt', descending: true)
+        .snapshots()
+        .handleError((e) {
+      debugPrint("🔥 ERROR in getOpenProjects: $e");
+      throw e;
+    }).map((snapshot) {
+      return snapshot.docs
+          .map((doc) => ProjectModel.fromFirestore(doc))
+          .toList();
+    });
+  }
+
+  Stream<ProjectModel?> getProjectStream(String projectId) {
+    return _firestore
+        .collection(projectsCollection)
+        .doc(projectId)
+        .snapshots()
+        .handleError((e) {
+      debugPrint("🔥 ERROR in getProjectStream: $e");
+      throw e;
+    }).map((doc) => doc.exists ? ProjectModel.fromFirestore(doc) : null);
+  }
+
+  Future<void> joinProject(String projectId, String userId) async {
     try {
-      // Check if already exists to prevent overwrite status if needed,
-      // but for simple RSVP upsert is usually fine or we check explicitly.
-      // Here we use set with merge true or just set.
+      final projectRef =
+          _firestore.collection(projectsCollection).doc(projectId);
+
+      await _firestore.runTransaction((transaction) async {
+        final snapshot = await transaction.get(projectRef);
+        if (!snapshot.exists) {
+          throw Exception('プロジェクトが見つかりません');
+        }
+
+        final project = ProjectModel.fromFirestore(snapshot);
+        if (project.status != 'open') {
+          throw Exception('この募集は終了しています');
+        }
+
+        if (project.participantIds.contains(userId)) {
+          return;
+        }
+
+        final maxParticipants = project.maxParticipants;
+        if (maxParticipants != null &&
+            project.participantIds.length >= maxParticipants) {
+          throw Exception('募集上限人数に達しています');
+        }
+
+        transaction.update(projectRef, {
+          'participantIds': FieldValue.arrayUnion([userId]),
+          'updatedAt': Timestamp.fromDate(DateTime.now()),
+        });
+      });
+    } catch (e) {
+      debugPrint("🔥 ERROR in joinProject: $e");
+      throw Exception('プロジェクトへの参加に失敗しました: $e');
+    }
+  }
+
+  Future<void> leaveProject(String projectId, String userId) async {
+    try {
+      await _firestore.collection(projectsCollection).doc(projectId).update({
+        'participantIds': FieldValue.arrayRemove([userId]),
+        'updatedAt': Timestamp.fromDate(DateTime.now()),
+      });
+    } catch (e) {
+      debugPrint("🔥 ERROR in leaveProject: $e");
+      throw Exception('プロジェクト参加のキャンセルに失敗しました: $e');
+    }
+  }
+
+  // --- Tag operations ---
+  Future<Map<String, dynamic>?> getMemberData(String circleId, String userId) async {
+    try {
+      final doc = await _firestore
+          .collection(circlesCollection)
+          .doc(circleId)
+          .collection('members')
+          .doc(userId)
+          .get();
+      if (doc.exists) return doc.data() as Map<String, dynamic>;
+      return null;
+    } catch (e) {
+      debugPrint("🔥 ERROR in getMemberData: $e");
+      return null;
+    }
+  }
+
+  Future<void> createTag(TagModel tag) async {
+    try {
+      final ref = tag.circleId != null
+          ? _firestore
+              .collection(circlesCollection)
+              .doc(tag.circleId)
+              .collection(tagsCollection)
+              .doc(tag.id)
+          : _firestore.collection(tagsCollection).doc(tag.id);
+      await ref.set(tag.toFirestore());
+    } catch (e) {
+      debugPrint("🔥 ERROR in createTag: $e");
+      throw Exception('タグの作成に失敗しました: $e');
+    }
+  }
+
+  Future<void> updateTag(TagModel tag) async {
+    try {
+      final ref = tag.circleId != null
+          ? _firestore
+              .collection(circlesCollection)
+              .doc(tag.circleId)
+              .collection(tagsCollection)
+              .doc(tag.id)
+          : _firestore.collection(tagsCollection).doc(tag.id);
+      await ref.update(tag.toFirestore());
+    } catch (e) {
+      debugPrint("🔥 ERROR in updateTag: $e");
+      throw Exception('タグの更新に失敗しました: $e');
+    }
+  }
+
+  Future<void> deleteTag(String tagId, {String? circleId}) async {
+    try {
+      final ref = circleId != null
+          ? _firestore
+              .collection(circlesCollection)
+              .doc(circleId)
+              .collection(tagsCollection)
+              .doc(tagId)
+          : _firestore.collection(tagsCollection).doc(tagId);
+      await ref.delete();
+    } catch (e) {
+      debugPrint("🔥 ERROR in deleteTag: $e");
+      throw Exception('タグの削除に失敗しました: $e');
+    }
+  }
+
+  Stream<List<TagModel>> getGlobalTagsStream({String? type}) {
+    Query<Map<String, dynamic>> query = _firestore.collection(tagsCollection);
+    if (type != null) {
+      query = query.where('type', isEqualTo: type);
+    }
+    return query.snapshots().handleError((e) {
+      debugPrint("🔥 ERROR in getGlobalTagsStream: $e");
+      throw e;
+    }).map((snapshot) =>
+        snapshot.docs.map((doc) => TagModel.fromFirestore(doc)).toList());
+  }
+
+  Stream<List<TagModel>> getCircleTagsStream(String circleId, {String? type}) {
+    Query<Map<String, dynamic>> query = _firestore
+        .collection(circlesCollection)
+        .doc(circleId)
+        .collection(tagsCollection);
+    if (type != null) {
+      query = query.where('type', isEqualTo: type);
+    }
+    return query.snapshots().handleError((e) {
+      debugPrint("🔥 ERROR in getCircleTagsStream: $e");
+      throw e;
+    }).map((snapshot) =>
+        snapshot.docs.map((doc) => TagModel.fromFirestore(doc)).toList());
+  }
+
+  Future<void> updateCircleMemberTags({
+    required String circleId,
+    required String userId,
+    List<String>? roleTags,
+    List<String>? skillTags,
+    String? displayRole,
+  }) async {
+    try {
+      final updates = <String, dynamic>{
+        'updatedAt': Timestamp.fromDate(DateTime.now()),
+      };
+      if (roleTags != null) updates['roleTags'] = roleTags;
+      if (skillTags != null) updates['skillTags'] = skillTags;
+      if (displayRole != null) updates['displayRole'] = displayRole;
+      await _firestore
+          .collection(circlesCollection)
+          .doc(circleId)
+          .collection('members')
+          .doc(userId)
+          .update(updates);
+    } catch (e) {
+      debugPrint("🔥 ERROR in updateCircleMemberTags: $e");
+      throw Exception('メンバータグの更新に失敗しました: $e');
+    }
+  }
+
+  // --- Recruitment operations ---
+  Future<void> createRecruitment(RecruitmentModel recruitment) async {
+    try {
+      final docRef = _firestore.collection(recruitmentsCollection).doc();
+      final toSave = recruitment.copyWith(id: docRef.id);
+      await docRef.set(toSave.toFirestore());
+    } catch (e) {
+      debugPrint("🔥 ERROR in createRecruitment: $e");
+      throw Exception('募集の作成に失敗しました: $e');
+    }
+  }
+
+  Future<void> updateRecruitment(RecruitmentModel recruitment) async {
+    try {
+      await _firestore
+          .collection(recruitmentsCollection)
+          .doc(recruitment.id)
+          .update(recruitment.toFirestore());
+    } catch (e) {
+      debugPrint("🔥 ERROR in updateRecruitment: $e");
+      throw Exception('募集の更新に失敗しました: $e');
+    }
+  }
+
+  Future<void> closeRecruitment(String recruitmentId) async {
+    try {
+      await _firestore.collection(recruitmentsCollection).doc(recruitmentId).update({
+        'status': 'closed',
+        'updatedAt': Timestamp.fromDate(DateTime.now()),
+      });
+    } catch (e) {
+      debugPrint("🔥 ERROR in closeRecruitment: $e");
+      throw Exception('募集の終了に失敗しました: $e');
+    }
+  }
+
+  Future<RecruitmentModel?> getRecruitment(String recruitmentId) async {
+    try {
+      final doc = await _firestore
+          .collection(recruitmentsCollection)
+          .doc(recruitmentId)
+          .get();
+      if (doc.exists) {
+        return RecruitmentModel.fromFirestore(doc);
+      }
+      return null;
+    } catch (e) {
+      debugPrint("🔥 ERROR in getRecruitment: $e");
+      throw Exception('募集の取得に失敗しました: $e');
+    }
+  }
+
+  Stream<RecruitmentModel?> getRecruitmentStream(String recruitmentId) {
+    return _firestore
+        .collection(recruitmentsCollection)
+        .doc(recruitmentId)
+        .snapshots()
+        .map((doc) => doc.exists ? RecruitmentModel.fromFirestore(doc) : null)
+        .handleError((e) {
+      debugPrint("🔥 ERROR in getRecruitmentStream: $e");
+      throw e;
+    });
+  }
+
+  Stream<List<RecruitmentModel>> getOpenRecruitmentsStream() {
+    return _firestore
+        .collection(recruitmentsCollection)
+        .where('status', isEqualTo: 'open')
+        .orderBy('createdAt', descending: true)
+        .snapshots()
+        .handleError((e) {
+      debugPrint("🔥 ERROR in getOpenRecruitmentsStream: $e");
+      throw e;
+    }).map((snapshot) => snapshot.docs
+        .map((doc) => RecruitmentModel.fromFirestore(doc))
+        .toList());
+  }
+
+  Stream<List<RecruitmentModel>> getRecruitmentsForCircle(String circleId) {
+    return _firestore
+        .collection(recruitmentsCollection)
+        .where('circleId', isEqualTo: circleId)
+        .orderBy('createdAt', descending: true)
+        .snapshots()
+        .handleError((e) {
+      debugPrint("🔥 ERROR in getRecruitmentsForCircle: $e");
+      throw e;
+    }).map((snapshot) => snapshot.docs
+        .map((doc) => RecruitmentModel.fromFirestore(doc))
+        .toList());
+  }
+
+  Future<List<RecruitmentModel>> getOpenRecruitmentsForCircle(
+      String circleId) async {
+    try {
+      final snapshot = await _firestore
+          .collection(recruitmentsCollection)
+          .where('circleId', isEqualTo: circleId)
+          .where('status', isEqualTo: 'open')
+          .orderBy('createdAt', descending: true)
+          .get();
+      return snapshot.docs
+          .map((doc) => RecruitmentModel.fromFirestore(doc))
+          .toList();
+    } catch (e) {
+      debugPrint("🔥 ERROR in getOpenRecruitmentsForCircle: $e");
+      return [];
+    }
+  }
+
+  // --- Application operations ---
+  Future<String> applyToRecruitment(
+      RecruitmentApplicationModel application) async {
+    try {
+      final docRef = _firestore
+          .collection(recruitmentsCollection)
+          .doc(application.recruitmentId)
+          .collection(applicationsCollection)
+          .doc();
+      final toSave = application.copyWith(id: docRef.id);
+      await docRef.set(toSave.toFirestore());
+
+      await _firestore
+          .collection(recruitmentsCollection)
+          .doc(application.recruitmentId)
+          .update({
+        'applicantCount': FieldValue.increment(1),
+        'updatedAt': Timestamp.fromDate(DateTime.now()),
+      });
+
+      return docRef.id;
+    } catch (e) {
+      debugPrint("🔥 ERROR in applyToRecruitment: $e");
+      throw Exception('応募に失敗しました: $e');
+    }
+  }
+
+  Stream<List<RecruitmentApplicationModel>> getApplicationsForRecruitment(
+      String recruitmentId) {
+    return _firestore
+        .collection(recruitmentsCollection)
+        .doc(recruitmentId)
+        .collection(applicationsCollection)
+        .orderBy('createdAt', descending: true)
+        .snapshots()
+        .handleError((e) {
+      debugPrint("🔥 ERROR in getApplicationsForRecruitment: $e");
+      throw e;
+    }).map((snapshot) => snapshot.docs
+        .map((doc) => RecruitmentApplicationModel.fromFirestore(doc))
+        .toList());
+  }
+
+  Stream<List<RecruitmentApplicationModel>> getApplicationsForCircle(
+      String circleId) {
+    return _firestore
+        .collectionGroup(applicationsCollection)
+        .where('circleId', isEqualTo: circleId)
+        .orderBy('createdAt', descending: true)
+        .snapshots()
+        .handleError((e) {
+      debugPrint("🔥 ERROR in getApplicationsForCircle: $e");
+      throw e;
+    }).map((snapshot) => snapshot.docs
+        .map((doc) => RecruitmentApplicationModel.fromFirestore(doc))
+        .toList());
+  }
+
+  Future<void> updateRecruitmentApplicationStatus({
+    required String recruitmentId,
+    required String applicationId,
+    required String status,
+  }) async {
+    try {
+      await _firestore
+          .collection(recruitmentsCollection)
+          .doc(recruitmentId)
+          .collection(applicationsCollection)
+          .doc(applicationId)
+          .update({
+        'status': status,
+        'updatedAt': Timestamp.fromDate(DateTime.now()),
+      });
+    } catch (e) {
+      debugPrint("🔥 ERROR in updateRecruitmentApplicationStatus: $e");
+      throw Exception('応募ステータスの更新に失敗しました: $e');
+    }
+  }
+
+  // TODO_SECURITY: enforce this in Firestore Security Rules.
+  Future<void> acceptRecruitmentApplicationAndAddMember({
+    required String recruitmentId,
+    required String applicationId,
+    List<String> roleTags = const [],
+    List<String> skillTags = const [],
+    String? displayRole,
+  }) async {
+    try {
+      final appDoc = await _firestore
+          .collection(recruitmentsCollection)
+          .doc(recruitmentId)
+          .collection(applicationsCollection)
+          .doc(applicationId)
+          .get();
+      if (!appDoc.exists) {
+        throw Exception('応募が見つかりません');
+      }
+
+      final application = RecruitmentApplicationModel.fromFirestore(appDoc);
+
+      final batch = _firestore.batch();
+
+      final appRef = _firestore
+          .collection(recruitmentsCollection)
+          .doc(recruitmentId)
+          .collection(applicationsCollection)
+          .doc(applicationId);
+      batch.update(appRef, {
+        'status': 'accepted',
+        'updatedAt': Timestamp.fromDate(DateTime.now()),
+      });
+
+      final memberRef = _firestore
+          .collection(circlesCollection)
+          .doc(application.circleId)
+          .collection('members')
+          .doc(application.applicantUserId);
+      final existingMember = await memberRef.get();
+      if (!existingMember.exists) {
+        final now = DateTime.now();
+        final memberData = MemberModel(
+          id: application.applicantUserId,
+          userId: application.applicantUserId,
+          role: 'member',
+          joinedAt: now,
+          roleTags: roleTags,
+          skillTags: skillTags,
+          displayRole: displayRole,
+          updatedAt: now,
+        );
+        batch.set(memberRef, memberData.toFirestore());
+      } else {
+        batch.update(memberRef, {
+          'roleTags': roleTags,
+          'skillTags': skillTags,
+          'displayRole': displayRole,
+          'updatedAt': Timestamp.fromDate(DateTime.now()),
+        });
+      }
+
+      await batch.commit();
+    } catch (e) {
+      debugPrint("🔥 ERROR in acceptRecruitmentApplicationAndAddMember: $e");
+      throw Exception('メンバー追加に失敗しました: $e');
+    }
+  }
+
+  // --- Unified DM / member-add helpers ---
+  Future<String> startCircleDm({
+    required String individualId,
+    required String circleId,
+    required String individualName,
+    required String circleName,
+    String? individualAvatarUrl,
+    String? circleAvatarUrl,
+  }) async {
+    return getOrCreateDmChannel(
+      individualId: individualId,
+      circleId: circleId,
+      individualName: individualName,
+      circleName: circleName,
+      circleAvatarUrl: circleAvatarUrl,
+      individualAvatarUrl: individualAvatarUrl,
+    );
+  }
+
+  Future<bool> isCircleMember(String circleId, String userId) async {
+    try {
+      final doc = await _firestore
+          .collection(circlesCollection)
+          .doc(circleId)
+          .collection('members')
+          .doc(userId)
+          .get();
+      return doc.exists;
+    } catch (e) {
+      debugPrint("🔥 ERROR in isCircleMember: $e");
+      return false;
+    }
+  }
+
+  Future<bool> isCircleAdmin(String circleId, String userId) async {
+    try {
+      final doc = await _firestore
+          .collection(circlesCollection)
+          .doc(circleId)
+          .collection('members')
+          .doc(userId)
+          .get();
+      if (!doc.exists) return false;
+      final data = doc.data() as Map<String, dynamic>;
+      return data['role'] == 'admin';
+    } catch (e) {
+      debugPrint("🔥 ERROR in isCircleAdmin: $e");
+      return false;
+    }
+  }
+
+  Future<void> addIndividualToCircleFromDm({
+    required String dmChannelId,
+    String role = 'member',
+    List<String> roleTags = const [],
+    List<String> skillTags = const [],
+    String? displayRole,
+  }) async {
+    try {
+      final channel = await getDmChannel(dmChannelId);
+      if (channel == null) throw Exception('DMチャンネルが見つかりません');
+
+      final memberRef = _firestore
+          .collection(circlesCollection)
+          .doc(channel.circleId)
+          .collection('members')
+          .doc(channel.individualId);
+
+      final existing = await memberRef.get();
+      final now = DateTime.now();
+
+      if (!existing.exists) {
+        final member = MemberModel(
+          id: channel.individualId,
+          userId: channel.individualId,
+          role: role,
+          joinedAt: now,
+          roleTags: roleTags,
+          skillTags: skillTags,
+          displayRole: displayRole,
+          updatedAt: now,
+        );
+        await memberRef.set(member.toFirestore());
+      } else {
+        await memberRef.update({
+          'roleTags': roleTags,
+          'skillTags': skillTags,
+          'displayRole': displayRole,
+          'updatedAt': Timestamp.fromDate(now),
+        });
+      }
+    } catch (e) {
+      debugPrint("🔥 ERROR in addIndividualToCircleFromDm: $e");
+      throw Exception('メンバー追加に失敗しました: $e');
+    }
+  }
+
+  // --- Joint event operations ---
+  Future<void> inviteCircleToEvent({
+    required String eventId,
+    required String invitedCircleId,
+  }) async {
+    try {
+      await _firestore.collection(eventsCollection).doc(eventId).update({
+        'invitedCircleIds': FieldValue.arrayUnion([invitedCircleId]),
+        'collaborationStatus': 'invited',
+        'updatedAt': Timestamp.fromDate(DateTime.now()),
+      });
+    } catch (e) {
+      debugPrint("🔥 ERROR in inviteCircleToEvent: $e");
+      throw Exception('共同主催の招待に失敗しました: $e');
+    }
+  }
+
+  Future<void> respondToJointEventInvitation({
+    required String eventId,
+    required String circleId,
+    required bool accepted,
+  }) async {
+    try {
+      final batch = _firestore.batch();
+      final eventRef = _firestore.collection(eventsCollection).doc(eventId);
+
+      if (accepted) {
+        batch.update(eventRef, {
+          'organizerCircleIds': FieldValue.arrayUnion([circleId]),
+          'invitedCircleIds': FieldValue.arrayRemove([circleId]),
+          'circlePermissions.$circleId': 'viewer',
+          'collaborationStatus': 'confirmed',
+          'updatedAt': Timestamp.fromDate(DateTime.now()),
+        });
+      } else {
+        batch.update(eventRef, {
+          'invitedCircleIds': FieldValue.arrayRemove([circleId]),
+          'updatedAt': Timestamp.fromDate(DateTime.now()),
+        });
+      }
+
+      await batch.commit();
+    } catch (e) {
+      debugPrint("🔥 ERROR in respondToJointEventInvitation: $e");
+      throw Exception('共同主催返答に失敗しました: $e');
+    }
+  }
+
+  // Note: joint events for a circle can be fetched by checking organizerCircleIds
+  Stream<List<EventModel>> getJointEventsForCircle(String circleId) {
+    return _firestore
+        .collection(eventsCollection)
+        .where('organizerCircleIds', arrayContains: circleId)
+        .orderBy('startTime', descending: false)
+        .snapshots()
+        .handleError((e) {
+      debugPrint("🔥 ERROR in getJointEventsForCircle: $e");
+      throw e;
+    }).map((snapshot) =>
+        snapshot.docs.map((doc) => EventModel.fromFirestore(doc)).toList());
+  }
+
+  // --- Enhanced project operations ---
+  Stream<List<ProjectModel>> getProjectsForCircle(String circleId) {
+    return _firestore
+        .collection(projectsCollection)
+        .where('circleId', isEqualTo: circleId)
+        .orderBy('createdAt', descending: true)
+        .snapshots()
+        .handleError((e) {
+      debugPrint("🔥 ERROR in getProjectsForCircle: $e");
+      throw e;
+    }).map((snapshot) =>
+        snapshot.docs.map((doc) => ProjectModel.fromFirestore(doc)).toList());
+  }
+
+  Stream<List<ProjectModel>> getVisibleProjectsForUser(String userId) {
+    return _firestore
+        .collection(projectsCollection)
+        .where('visibility', isEqualTo: 'public')
+        .where('status', isEqualTo: 'open')
+        .orderBy('createdAt', descending: true)
+        .snapshots()
+        .handleError((e) {
+      debugPrint("🔥 ERROR in getVisibleProjectsForUser: $e");
+      throw e;
+    }).map((snapshot) =>
+        snapshot.docs.map((doc) => ProjectModel.fromFirestore(doc)).toList());
+  }
+
+  Future<void> applyToProject(String projectId, String userId) async {
+    try {
+      await _firestore.collection(projectsCollection).doc(projectId).update({
+        'applicantIds': FieldValue.arrayUnion([userId]),
+        'updatedAt': Timestamp.fromDate(DateTime.now()),
+      });
+    } catch (e) {
+      debugPrint("🔥 ERROR in applyToProject: $e");
+      throw Exception('応募に失敗しました: $e');
+    }
+  }
+
+  Future<void> approveProjectApplicant(String projectId, String userId) async {
+    try {
+      await _firestore.collection(projectsCollection).doc(projectId).update({
+        'applicantIds': FieldValue.arrayRemove([userId]),
+        'participantIds': FieldValue.arrayUnion([userId]),
+        'updatedAt': Timestamp.fromDate(DateTime.now()),
+      });
+    } catch (e) {
+      debugPrint("🔥 ERROR in approveProjectApplicant: $e");
+      throw Exception('参加承認に失敗しました: $e');
+    }
+  }
+
+  Future<void> rejectProjectApplicant(String projectId, String userId) async {
+    try {
+      await _firestore.collection(projectsCollection).doc(projectId).update({
+        'applicantIds': FieldValue.arrayRemove([userId]),
+        'updatedAt': Timestamp.fromDate(DateTime.now()),
+      });
+    } catch (e) {
+      debugPrint("🔥 ERROR in rejectProjectApplicant: $e");
+      throw Exception('却下に失敗しました: $e');
+    }
+  }
+
+  // --- Enhanced attendance operations ---
+  Future<void> createOrUpdateAttendance(AttendanceModel attendance) async {
+    try {
       await _firestore
           .collection(eventsCollection)
           .doc(attendance.eventId)
@@ -764,47 +1560,124 @@ class FirestoreService {
           .doc(attendance.userId)
           .set(attendance.toFirestore());
     } catch (e) {
-      print("🔥 ERROR in rsvpEvent: $e");
-      throw Exception('イベントへの参加登録に失敗しました: $e');
+      debugPrint("🔥 ERROR in createOrUpdateAttendance: $e");
+      throw Exception('出席情報の保存に失敗しました: $e');
+    }
+  }
+
+  Future<void> updateRsvpStatus({
+    required String eventId,
+    required String userId,
+    required AttendanceStatus status,
+    required String userName,
+    String? userProfileImageUrl,
+  }) async {
+    try {
+      final now = DateTime.now();
+      final ref = _firestore
+          .collection(eventsCollection)
+          .doc(eventId)
+          .collection(attendancesCollection)
+          .doc(userId);
+      final existing = await ref.get();
+      if (existing.exists) {
+        await ref.update({
+          'status': status.name,
+          'userName': userName,
+          'userProfileImageUrl': userProfileImageUrl,
+          'updatedAt': Timestamp.fromDate(now),
+        });
+      } else {
+        final attendance = AttendanceModel(
+          id: userId,
+          eventId: eventId,
+          userId: userId,
+          userName: userName,
+          userProfileImageUrl: userProfileImageUrl,
+          status: status,
+          createdAt: now,
+          updatedAt: now,
+        );
+        await ref.set(attendance.toFirestore());
+      }
+    } catch (e) {
+      debugPrint("🔥 ERROR in updateRsvpStatus: $e");
+      throw Exception('出欠ステータスの更新に失敗しました: $e');
     }
   }
 
   Future<void> markAttendance({
     required String eventId,
     required String userId,
-    required String scanData, // In case we want to validate a token later
+    required String scanData,
+    String method = 'manual',
+    String? checkedInBy,
   }) async {
     try {
-      // Direct update for now.
-      // In real app, verify scanData matches logic.
-      final attendanceRef = _firestore
+      final now = DateTime.now();
+      final ref = _firestore
           .collection(eventsCollection)
           .doc(eventId)
           .collection(attendancesCollection)
           .doc(userId);
 
-      await attendanceRef.update({
-        'status': 'attending', // Or 'checkedIn'
-        'checkedInAt': FieldValue.serverTimestamp(),
-      });
+      final existing = await ref.get();
+      if (existing.exists) {
+        await ref.update({
+          'status': 'attending',
+          'checkedInAt': Timestamp.fromDate(now),
+          'checkInMethod': method,
+          'checkedInBy': checkedInBy,
+          'qrTokenHash': scanData.isNotEmpty ? scanData : null,
+          'updatedAt': Timestamp.fromDate(now),
+        });
+      } else {
+        final attendance = AttendanceModel(
+          id: userId,
+          eventId: eventId,
+          userId: userId,
+          userName: userId,
+          status: AttendanceStatus.attending,
+          checkedInAt: now,
+          createdAt: now,
+          checkInMethod: method,
+          checkedInBy: checkedInBy,
+          qrTokenHash: scanData.isNotEmpty ? scanData : null,
+          updatedAt: now,
+        );
+        await ref.set(attendance.toFirestore());
+      }
     } catch (e) {
-      print("🔥 ERROR in markAttendance: $e");
+      debugPrint("🔥 ERROR in markAttendance: $e");
       throw Exception('出席確認に失敗しました: $e');
     }
   }
 
-  Stream<List<AttendanceModel>> getEventAttendances(String eventId) {
+  Stream<List<AttendanceModel>> getAttendancesForEvent(String eventId) {
     return _firestore
         .collection(eventsCollection)
         .doc(eventId)
         .collection(attendancesCollection)
         .snapshots()
         .handleError((e) {
-      print("🔥 ERROR in getEventAttendances: $e");
+      debugPrint("🔥 ERROR in getAttendancesForEvent: $e");
       throw e;
     }).map((snapshot) => snapshot.docs
-            .map((doc) => AttendanceModel.fromFirestore(doc))
-            .toList());
+        .map((doc) => AttendanceModel.fromFirestore(doc))
+        .toList());
+  }
+
+  Stream<List<AttendanceModel>> getAttendancesForUser(String userId) {
+    return _firestore
+        .collectionGroup(attendancesCollection)
+        .where('userId', isEqualTo: userId)
+        .snapshots()
+        .handleError((e) {
+      debugPrint("🔥 ERROR in getAttendancesForUser: $e");
+      throw e;
+    }).map((snapshot) => snapshot.docs
+        .map((doc) => AttendanceModel.fromFirestore(doc))
+        .toList());
   }
 }
 

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:sizer/sizer.dart';
 
@@ -258,27 +259,7 @@ class _LocationSectionState extends State<LocationSection> {
                 ),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(11),
-                  child: GoogleMap(
-                    initialCameraPosition: CameraPosition(
-                      target: widget.selectedLocation ??
-                          const LatLng(35.6586, 139.7016),
-                      zoom: 15,
-                    ),
-                    markers: _buildMapMarkers(),
-                    onMapCreated: (GoogleMapController controller) {
-                      _mapController = controller;
-                    },
-                    onTap: (LatLng location) {
-                      widget.onLocationChanged(location);
-                      widget.locationController.text =
-                          'カスタム位置 (${location.latitude.toStringAsFixed(4)}, ${location.longitude.toStringAsFixed(4)})';
-                      setState(() {});
-                    },
-                    myLocationEnabled: true,
-                    myLocationButtonEnabled: true,
-                    zoomControlsEnabled: true,
-                    mapToolbarEnabled: false,
-                  ),
+                  child: _buildMapPicker(),
                 ),
               ),
             ],
@@ -333,6 +314,63 @@ class _LocationSectionState extends State<LocationSection> {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildMapPicker() {
+    if (kIsWeb) {
+      return Container(
+        color: AppTheme.surfaceVariant,
+        padding: EdgeInsets.all(4.w),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            CustomIconWidget(
+              iconName: 'map',
+              color: AppTheme.lightTheme.colorScheme.primary,
+              size: 32,
+            ),
+            SizedBox(height: 1.h),
+            Text(
+              'Web版では地図を表示できません',
+              style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: AppTheme.textPrimary,
+                  ),
+              textAlign: TextAlign.center,
+            ),
+            SizedBox(height: 0.5.h),
+            Text(
+              '場所名の入力または下の候補から選択してください。',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: AppTheme.textSecondary,
+                  ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      );
+    }
+
+    return GoogleMap(
+      initialCameraPosition: CameraPosition(
+        target: widget.selectedLocation ?? const LatLng(35.6586, 139.7016),
+        zoom: 15,
+      ),
+      markers: _buildMapMarkers(),
+      onMapCreated: (GoogleMapController controller) {
+        _mapController = controller;
+      },
+      onTap: (LatLng location) {
+        widget.onLocationChanged(location);
+        widget.locationController.text =
+            'カスタム位置 (${location.latitude.toStringAsFixed(4)}, ${location.longitude.toStringAsFixed(4)})';
+        setState(() {});
+      },
+      myLocationEnabled: true,
+      myLocationButtonEnabled: true,
+      zoomControlsEnabled: true,
+      mapToolbarEnabled: false,
     );
   }
 

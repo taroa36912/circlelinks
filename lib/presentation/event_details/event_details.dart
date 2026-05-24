@@ -9,11 +9,6 @@ import './widgets/comments_section_widget.dart';
 import './widgets/event_header_widget.dart';
 import './widgets/event_info_card_widget.dart';
 
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../core/models/event_model.dart';
-import '../../core/services/firestore_service.dart';
-import 'package:intl/intl.dart'; 
-
 class EventDetails extends ConsumerStatefulWidget {
   const EventDetails({super.key});
 
@@ -25,40 +20,44 @@ class _EventDetailsState extends ConsumerState<EventDetails> {
   final ScrollController _scrollController = ScrollController();
   String _currentUserStatus = 'undecided'; // Keep simple for now
   bool _showAdditionalDetails = false;
-  
+  bool _showActionPanel = true;
+
   bool _isLoading = true;
   String? _eventId;
   Map<String, dynamic> _eventData = {}; // Initialize empty
-  List<Map<String, dynamic>> _attendees = []; // 
+  final List<Map<String, dynamic>> _attendees = []; //
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     if (_eventId == null) {
-       final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
-       if (args != null && args['eventId'] != null) {
-         _eventId = args['eventId'];
-         _loadData();
-       }
+      final args =
+          ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+      if (args != null && args['eventId'] != null) {
+        _eventId = args['eventId'];
+        _loadData();
+      }
     }
   }
 
   Future<void> _loadData() async {
     if (_eventId == null) return;
     setState(() => _isLoading = true);
-    
+
     try {
       final firestoreService = ref.read(firestoreServiceProvider);
       final event = await firestoreService.getEvent(_eventId!);
-      
+
       if (event != null) {
         // Map EventModel to the UI's expected Map format
         setState(() {
           _eventData = {
             'id': event.id,
             'title': event.title,
-            'heroImage': event.mainImageUrl ?? 'https://images.pexels.com/photos/1190298/pexels-photo-1190298.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1', // Fallback
+            'heroImage': event.mainImageUrl ??
+                'https://images.pexels.com/photos/1190298/pexels-photo-1190298.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1', // Fallback
             'date': DateFormat('MMMM d, yyyy').format(event.startTime),
-            'time': '${DateFormat('HH:mm').format(event.startTime)} - ${DateFormat('HH:mm').format(event.endTime)}',
+            'time':
+                '${DateFormat('HH:mm').format(event.startTime)} - ${DateFormat('HH:mm').format(event.endTime)}',
             'location': event.location,
             'address': event.location, // Assuming location is address for now
             'description': event.description,
@@ -70,9 +69,9 @@ class _EventDetailsState extends ConsumerState<EventDetails> {
         });
       }
     } catch (e) {
-      print("Error loading event: $e");
+      debugPrint("Error loading event: $e");
       if (mounted) {
-         setState(() => _isLoading = false);
+        setState(() => _isLoading = false);
       }
     }
   }
@@ -136,42 +135,9 @@ class _EventDetailsState extends ConsumerState<EventDetails> {
     },
   ];
 
-  // Mock comments data
-  final List<Map<String, dynamic>> _comments = [
-    {
-      'id': 1,
-      'userName': 'Yuki Tanaka',
-      'userAvatar':
-          'https://images.pexels.com/photos/1239291/pexels-photo-1239291.jpeg?auto=compress&cs=tinysrgb&w=400',
-      'content':
-          'Really looking forward to this event! The venue looks amazing.',
-      'timestamp': DateTime.now().subtract(const Duration(hours: 3)),
-      'likes': 5,
-      'isLiked': false,
-    },
-    {
-      'id': 2,
-      'userName': 'Sakura Yamamoto',
-      'userAvatar':
-          'https://images.pexels.com/photos/1130626/pexels-photo-1130626.jpeg?auto=compress&cs=tinysrgb&w=400',
-      'content':
-          'Should we bring anything special? Also, is there a dress code?',
-      'timestamp': DateTime.now().subtract(const Duration(hours: 2)),
-      'likes': 3,
-      'isLiked': true,
-    },
-    {
-      'id': 3,
-      'userName': 'Hiroshi Sato',
-      'userAvatar':
-          'https://images.pexels.com/photos/2379004/pexels-photo-2379004.jpeg?auto=compress&cs=tinysrgb&w=400',
-      'content':
-          'The menu looks fantastic! Can\'t wait to try the traditional dishes.',
-      'timestamp': DateTime.now().subtract(const Duration(hours: 1)),
-      'likes': 2,
-      'isLiked': false,
-    },
-  ];
+  // Mock comments data — TODO: Persist comments to Firestore.
+  final List<Map<String, dynamic>> _comments = [];
+  // Now empty by default; comments are loaded from Firestore when implemented.
 
   @override
   void initState() {
@@ -198,7 +164,7 @@ class _EventDetailsState extends ConsumerState<EventDetails> {
     if (_isLoading) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
-    
+
     return Scaffold(
       backgroundColor: AppTheme.lightTheme.colorScheme.surface,
       body: RefreshIndicator(
@@ -229,18 +195,23 @@ class _EventDetailsState extends ConsumerState<EventDetails> {
                       onCommentAdded: _addComment,
                     ),
                   ],
-                  SizedBox(height: 20.h), // Space for bottom actions
+                  SizedBox(
+                    height: _showActionPanel ? 24.h : 10.h,
+                  ),
                 ],
               ),
             ),
           ],
         ),
       ),
-      bottomSheet: ActionButtonsWidget(
-        eventData: _eventData,
-        currentUserStatus: _currentUserStatus,
-        onStatusChanged: _updateUserStatus,
-      ),
+      bottomSheet: _showActionPanel
+          ? ActionButtonsWidget(
+              eventData: _eventData,
+              currentUserStatus: _currentUserStatus,
+              onStatusChanged: _updateUserStatus,
+              onCollapse: () => setState(() => _showActionPanel = false),
+            )
+          : _buildCollapsedActionPanelButton(),
       floatingActionButton: _showAdditionalDetails
           ? null
           : FloatingActionButton.extended(
@@ -257,16 +228,26 @@ class _EventDetailsState extends ConsumerState<EventDetails> {
     );
   }
 
-  Future<void> _refreshEventData() async {
-    await _loadData();
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Event data updated'),
-          behavior: SnackBarBehavior.floating,
+  Widget _buildCollapsedActionPanelButton() {
+    return SafeArea(
+      minimum: EdgeInsets.symmetric(horizontal: 4.w, vertical: 1.h),
+      child: Align(
+        alignment: Alignment.centerRight,
+        heightFactor: 1,
+        child: FloatingActionButton.extended(
+          heroTag: 'event_action_panel_toggle',
+          onPressed: () => setState(() => _showActionPanel = true),
+          icon: CustomIconWidget(
+            iconName: 'keyboard_arrow_up',
+            color: Colors.white,
+            size: 20,
+          ),
+          label: const Text('出欠・支払い'),
+          backgroundColor: AppTheme.lightTheme.colorScheme.primary,
+          foregroundColor: Colors.white,
         ),
-      );
-    }
+      ),
+    );
   }
 
   void _updateUserStatus(String newStatus) {
@@ -274,9 +255,38 @@ class _EventDetailsState extends ConsumerState<EventDetails> {
 
     // Update event data if needed
     _eventData['userStatus'] = newStatus;
+
+    // Persist RSVP to Firestore
+    final authService = ref.read(firebaseAuthServiceProvider);
+    final user = authService.currentUser;
+    if (user != null && _eventId != null) {
+      final firestoreService = ref.read(firestoreServiceProvider);
+      AttendanceStatus stat;
+      switch (newStatus) {
+        case 'attending':
+          stat = AttendanceStatus.attending;
+          break;
+        case 'not_attending':
+          stat = AttendanceStatus.absent;
+          break;
+        default:
+          stat = AttendanceStatus.pending;
+      }
+      firestoreService.updateRsvpStatus(
+        eventId: _eventId!,
+        userId: user.uid,
+        status: stat,
+        userName: user.displayName ?? user.email ?? 'ユーザー',
+        userProfileImageUrl: user.photoURL,
+      ).catchError((e) {
+        debugPrint("Failed to persist RSVP: $e");
+      });
+    }
   }
 
   void _addComment(String content) {
+    // TODO: Persist comments to Firestore.
+    // For now, comments are only held in local state and lost on screen exit.
     final newComment = {
       'id': _comments.length + 1,
       'userName': 'Current User',

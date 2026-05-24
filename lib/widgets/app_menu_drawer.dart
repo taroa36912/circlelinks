@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:sizer/sizer.dart';
 import '../../core/app_export.dart';
-import '../../routes/app_routes.dart';
-import '../../core/models/user_model.dart';
 
 class AppMenuDrawer extends ConsumerStatefulWidget {
   const AppMenuDrawer({super.key});
@@ -70,7 +68,7 @@ class _AppMenuDrawerState extends ConsumerState<AppMenuDrawer> {
           _isLoading = false;
         });
       }
-      print("Drawer: データ取得エラー $e");
+      debugPrint("Drawer: データ取得エラー $e");
     }
   }
 
@@ -182,6 +180,15 @@ class _AppMenuDrawerState extends ConsumerState<AppMenuDrawer> {
                 Navigator.pushNamed(context, AppRoutes.eventList);
               },
             ),
+            _buildMenuItem(
+              theme,
+              icon: Icons.campaign_outlined,
+              title: "プロジェクト募集",
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.pushNamed(context, AppRoutes.projectList);
+              },
+            ),
           ],
 
           const Divider(),
@@ -239,7 +246,7 @@ class _AppMenuDrawerState extends ConsumerState<AppMenuDrawer> {
       accountEmail: Text(
         _currentUser?.email ?? '',
         style: theme.textTheme.bodyMedium?.copyWith(
-          color: theme.colorScheme.onPrimary.withOpacity(0.8),
+          color: theme.colorScheme.onPrimary.withValues(alpha: 0.8),
         ),
       ),
       currentAccountPicture: CircleAvatar(
@@ -271,7 +278,7 @@ class _AppMenuDrawerState extends ConsumerState<AppMenuDrawer> {
       child: Text(
         title.toUpperCase(),
         style: theme.textTheme.labelMedium?.copyWith(
-          color: theme.colorScheme.onSurfaceVariant.withOpacity(0.7),
+          color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
           fontWeight: FontWeight.w600,
           letterSpacing: 0.8,
         ),

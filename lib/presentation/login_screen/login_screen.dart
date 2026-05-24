@@ -93,10 +93,22 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
 
     try {
       final authService = ref.read(firebaseAuthServiceProvider);
-      await authService.signInWithEmailAndPassword(
+      final credential = await authService.signInWithEmailAndPassword(
         email: email,
         password: password,
       );
+
+      final firebaseUser = credential?.user ?? authService.currentUser;
+      if (firebaseUser != null) {
+        final firestoreService = ref.read(firestoreServiceProvider);
+        await firestoreService.upsertAuthenticatedUser(
+          uid: firebaseUser.uid,
+          email: firebaseUser.email ?? email,
+          userName: firebaseUser.displayName,
+          profileImageUrl: firebaseUser.photoURL,
+        );
+      }
+
       HapticFeedback.lightImpact();
       if (mounted) {
         setState(() {
@@ -106,11 +118,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
             context, AppRoutes.circleDiscovery); // 修正
       }
     } catch (e) {
-      setState(() {
-        _isLoading = false;
-      });
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        setState(() {
+          _isLoading = false;
+        });
+        final messenger = ScaffoldMessenger.of(context);
+        messenger.showSnackBar(
           SnackBar(
             content: Text('ログインに失敗しました: $e'),
             backgroundColor: AppTheme.lightTheme.colorScheme.error,
@@ -119,7 +132,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
               label: '閉じる',
               textColor: Colors.white,
               onPressed: () {
-                ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                messenger.hideCurrentSnackBar();
               },
             ),
           ),
@@ -148,6 +161,17 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
       final userCredential = await authService.signInWithGoogle();
 
       if (userCredential != null) {
+        final firebaseUser = userCredential.user ?? authService.currentUser;
+        if (firebaseUser != null) {
+          final firestoreService = ref.read(firestoreServiceProvider);
+          await firestoreService.upsertAuthenticatedUser(
+            uid: firebaseUser.uid,
+            email: firebaseUser.email ?? '',
+            userName: firebaseUser.displayName,
+            profileImageUrl: firebaseUser.photoURL,
+          );
+        }
+
         HapticFeedback.lightImpact();
         if (mounted) {
           setState(() {
@@ -162,11 +186,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
         });
       }
     } catch (e) {
-      setState(() {
-        _isLoading = false;
-      });
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        setState(() {
+          _isLoading = false;
+        });
+        final messenger = ScaffoldMessenger.of(context);
+        messenger.showSnackBar(
           SnackBar(
             content: Text('Googleログインに失敗しました: $e'),
             backgroundColor: AppTheme.lightTheme.colorScheme.error,
@@ -175,7 +200,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
               label: '閉じる',
               textColor: Colors.white,
               onPressed: () {
-                ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                messenger.hideCurrentSnackBar();
               },
             ),
           ),
@@ -202,6 +227,17 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
       final userCredential = await authService.signInWithLine();
 
       if (userCredential != null) {
+        final firebaseUser = userCredential.user ?? authService.currentUser;
+        if (firebaseUser != null) {
+          final firestoreService = ref.read(firestoreServiceProvider);
+          await firestoreService.upsertAuthenticatedUser(
+            uid: firebaseUser.uid,
+            email: firebaseUser.email ?? '',
+            userName: firebaseUser.displayName,
+            profileImageUrl: firebaseUser.photoURL,
+          );
+        }
+
         HapticFeedback.lightImpact();
         if (mounted) {
           setState(() {
@@ -216,11 +252,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
         });
       }
     } catch (e) {
-      setState(() {
-        _isLoading = false;
-      });
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        setState(() {
+          _isLoading = false;
+        });
+        final messenger = ScaffoldMessenger.of(context);
+        messenger.showSnackBar(
           SnackBar(
             content: Text('LINEログインに失敗しました: $e'),
             backgroundColor: AppTheme.lightTheme.colorScheme.error,
@@ -228,7 +265,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
               label: '閉じる',
               textColor: Colors.white,
               onPressed: () {
-                ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                messenger.hideCurrentSnackBar();
               },
             ),
           ),
@@ -437,7 +474,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
             // Biometric Prompt Overlay
             if (_showBiometricPrompt)
               Container(
-                color: Colors.black.withOpacity(0.5),
+                color: Colors.black.withValues(alpha: 0.5),
                 child: Center(
                   child: BiometricPromptWidget(
                     onBiometricSuccess: _handleBiometricSuccess,
@@ -449,7 +486,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
             // Loading Indicator Overlay
             if (_isLoading)
               Container(
-                color: Colors.black.withOpacity(0.3),
+                color: Colors.black.withValues(alpha: 0.3),
                 child: const Center(
                   child: CircularProgressIndicator(),
                 ),

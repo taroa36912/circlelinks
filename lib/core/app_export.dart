@@ -18,6 +18,14 @@ export 'models/connection_request_model.dart';
 export 'models/message_model.dart';
 export 'models/dm_message_model.dart';
 export 'models/dm_channel_model.dart';
+export 'models/user_model.dart';
+export 'models/project_model.dart';
+export 'models/event_model.dart';
+export 'models/attendance_model.dart';
+export 'models/member_model.dart';
+export 'models/tag_model.dart';
+export 'models/recruitment_model.dart';
+export 'models/recruitment_application_model.dart';
 
 // Services
 export 'services/firebase_auth_service.dart';

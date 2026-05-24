@@ -56,6 +56,9 @@ class _EventCreationState extends ConsumerState<EventCreation> {
   List<CircleModel> _myAdminCircles = [];
   bool _isLoadingMyCircles = true;
   String? _loadedDraftKey;
+  String _eventMode = 'solo';
+  List<String> _preselectedCoOrganizerIds = [];
+  final Set<String> _selectedCoOrganizerIds = {};
 
   @override
   void didChangeDependencies() {
@@ -67,6 +70,11 @@ class _EventCreationState extends ConsumerState<EventCreation> {
         ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
     if (args != null && args['circleId'] != null) {
       _circleId = args['circleId'] as String;
+    }
+    if (args != null) {
+      _eventMode = args['mode'] as String? ?? 'solo';
+      _preselectedCoOrganizerIds =
+          List<String>.from(args['preselectedCoOrganizerCircleIds'] ?? []);
     }
     _ensureCircleContext();
   }
@@ -196,6 +204,7 @@ class _EventCreationState extends ConsumerState<EventCreation> {
               padding: EdgeInsets.only(bottom: 10.h),
               children: [
                 _buildOrganizerCircleSelector(),
+                if (_connectedCircles.isNotEmpty) _buildJointEventSection(),
 
                 // Event Basics
                 EventBasicsSection(
@@ -347,6 +356,9 @@ class _EventCreationState extends ConsumerState<EventCreation> {
       _myAdminCircles = circles;
       _circleId = resolvedCircleId;
       _isLoadingMyCircles = false;
+      if (_preselectedCoOrganizerIds.isNotEmpty) {
+        _selectedCoOrganizerIds.addAll(_preselectedCoOrganizerIds);
+      }
     });
 
     if (resolvedCircleId != null) {
@@ -396,7 +408,7 @@ class _EventCreationState extends ConsumerState<EventCreation> {
       child: Padding(
         padding: EdgeInsets.all(4.w),
         child: DropdownButtonFormField<String>(
-          value: _myAdminCircles.any((circle) => circle.id == _circleId)
+          initialValue: _myAdminCircles.any((circle) => circle.id == _circleId)
               ? _circleId
               : null,
           decoration: const InputDecoration(
@@ -459,6 +471,52 @@ class _EventCreationState extends ConsumerState<EventCreation> {
         });
       }
     }
+  }
+
+  Widget _buildJointEventSection() {
+    return Card(
+      margin: EdgeInsets.symmetric(horizontal: 4.w, vertical: 1.h),
+      child: Padding(
+        padding: EdgeInsets.all(4.w),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              '合同企画・共同主催',
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+            ),
+            SizedBox(height: 1.h),
+            if (_connectedCircles.isEmpty)
+              const Text('コネクション済みサークルがありません。')
+            else
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: _connectedCircles
+                    .map(
+                      (circle) => FilterChip(
+                        label: Text(circle.circleName),
+                        selected: _selectedCoOrganizerIds.contains(circle.id),
+                        onSelected: (selected) {
+                          setState(() {
+                            if (selected) {
+                              _selectedCoOrganizerIds.add(circle.id);
+                            } else {
+                              _selectedCoOrganizerIds.remove(circle.id);
+                            }
+                          });
+                          _saveDraft();
+                        },
+                      ),
+                    )
+                    .toList(),
+              ),
+          ],
+        ),
+      ),
+    );
   }
 
   Widget _buildVisibilitySection() {
@@ -1132,6 +1190,16 @@ class _EventCreationState extends ConsumerState<EventCreation> {
 
       final firestoreService = ref.read(firestoreServiceProvider);
 
+      final coOrganizerIds = _selectedCoOrganizerIds.toList();
+      final allOrganizerIds = [
+        _circleId!,
+        ...coOrganizerIds,
+      ];
+      final permissions = <String, String>{
+        _circleId!: 'owner',
+        for (final id in coOrganizerIds) id: 'viewer',
+      };
+
       final newEvent = EventModel(
         id: DateTime.now().millisecondsSinceEpoch.toString(),
         circleId: _circleId!,
@@ -1149,6 +1217,10 @@ class _EventCreationState extends ConsumerState<EventCreation> {
         isDraft: false,
         createdAt: DateTime.now(),
         updatedAt: DateTime.now(),
+        ownerCircleId: _circleId!,
+        organizerCircleIds: allOrganizerIds,
+        circlePermissions: permissions,
+        collaborationStatus: coOrganizerIds.isNotEmpty ? 'confirmed' : 'none',
       );
 
       final docRef = FirebaseFirestore.instance

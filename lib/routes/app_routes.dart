@@ -20,14 +20,24 @@ import '../presentation/profile_settings/profile_settings_screen.dart';
 import '../presentation/event_management/event_management_screen.dart'; // New
 import '../presentation/event/qr_scan_screen.dart'; // New
 import '../presentation/event/event_list_screen.dart';
+import '../presentation/login_screen/forgot_password_screen.dart';
 import '../presentation/profile/portfolio_screen.dart'; // New
 import '../presentation/joined_circles/joined_circles_screen.dart'; // New
+import '../presentation/bulletin_board/project_list_screen.dart';
+import '../presentation/bulletin_board/project_creation_screen.dart';
+import '../presentation/bulletin_board/project_details_screen.dart';
+import '../presentation/recruitment/recruitment_list_screen.dart';
+import '../presentation/recruitment/recruitment_creation_screen.dart';
+import '../presentation/recruitment/recruitment_details_screen.dart';
+import '../presentation/recruitment/recruitment_management_screen.dart';
+import '../presentation/recruitment/recruitment_applications_screen.dart';
 
 class AppRoutes {
   static const String initial = '/';
   static const String eventCreation = '/event-creation';
   static const String circleProfile = '/circle-profile';
   static const String login = '/login-screen';
+  static const String forgotPassword = '/forgot-password';
   static const String eventDetails = '/event-details';
   static const String circleDiscovery = '/circle-discovery';
   static const String circleRegistration = '/circle-registration';
@@ -49,12 +59,21 @@ class AppRoutes {
   static const String qrScan = '/qr-scan'; // New
   static const String portfolio = '/portfolio'; // New
   static const String joinedCircles = '/joined-circles'; // New
+  static const String projectList = '/project-list';
+  static const String projectCreation = '/project-creation';
+  static const String projectDetails = '/project-details';
+  static const String recruitmentList = '/recruitments';
+  static const String recruitmentCreation = '/recruitment-creation';
+  static const String recruitmentDetails = '/recruitment-details';
+  static const String recruitmentManagement = '/recruitment-management';
+  static const String recruitmentApplications = '/recruitment-applications';
 
   static const String circleAdmin = myCirclesList;
 
   static Map<String, WidgetBuilder> routes = {
     initial: (context) => const LoginScreen(),
     login: (context) => const LoginScreen(),
+    forgotPassword: (context) => const ForgotPasswordScreen(),
     signup: (context) => const SignupScreen(),
 
     circleDiscovery: (context) => const CircleDiscovery(),
@@ -100,6 +119,13 @@ class AppRoutes {
     qrScan: (context) => const QRScanScreen(), // New
     portfolio: (context) => const PortfolioScreen(), // New
     joinedCircles: (context) => const JoinedCirclesScreen(), // New
+    projectList: (context) => const ProjectListScreen(),
+    projectCreation: (context) => const ProjectCreationScreen(),
+    projectDetails: (context) {
+      final args =
+          ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+      return ProjectDetailsScreen(projectId: args?['projectId'] ?? '');
+    },
 
     // ⬇️ --- 修正: connections ルートを追加 (引数を受け取る) --- ⬇️
     connections: (context) {
@@ -114,6 +140,32 @@ class AppRoutes {
       final args =
           ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
       return ChatScreen(connectionId: args?['connectionId'] ?? '');
+    },
+
+    recruitmentList: (context) => const RecruitmentListScreen(),
+    recruitmentCreation: (context) {
+      final args =
+          ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+      return RecruitmentCreationScreen(circleId: args?['circleId'] ?? '');
+    },
+    recruitmentDetails: (context) {
+      final args =
+          ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+      return RecruitmentDetailsScreen(
+          recruitmentId: args?['recruitmentId'] ?? '');
+    },
+    recruitmentManagement: (context) {
+      final args =
+          ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+      return RecruitmentManagementScreen(circleId: args?['circleId'] ?? '');
+    },
+    recruitmentApplications: (context) {
+      final args =
+          ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+      return RecruitmentApplicationsScreen(
+        circleId: args?['circleId'] ?? '',
+        recruitmentId: args?['recruitmentId'],
+      );
     },
   };
 }

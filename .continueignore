@@ -1,0 +1,11 @@
+node_modules
+.git
+dist
+build
+.next
+.dart_tool
+Pods
+ios/Pods
+android/.gradle
+coverage
+*.lock

@@ -335,19 +335,42 @@ class _ConnectionsState extends ConsumerState<Connections>
                 color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
         ),
-        trailing: Container(
-          padding: EdgeInsets.symmetric(horizontal: 2.w, vertical: 0.5.h),
-          decoration: BoxDecoration(
-            color: Colors.green.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Text(
-            '接続済み',
-            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: Colors.green,
-                  fontWeight: FontWeight.w600,
-                ),
-          ),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            IconButton(
+              icon: const Icon(Icons.event, color: Colors.blue),
+              tooltip: '合同イベントを作成',
+              onPressed: () {
+                final otherCircleId = connection.fromCircleId == widget.circleId
+                    ? connection.toCircleId
+                    : connection.fromCircleId;
+                Navigator.pushNamed(
+                  context,
+                  AppRoutes.eventCreation,
+                  arguments: {
+                    'circleId': widget.circleId,
+                    'mode': 'jointEvent',
+                    'preselectedCoOrganizerCircleIds': [otherCircleId],
+                  },
+                );
+              },
+            ),
+            Container(
+              padding: EdgeInsets.symmetric(horizontal: 2.w, vertical: 0.5.h),
+              decoration: BoxDecoration(
+                color: Colors.green.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(
+                '接続済み',
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: Colors.green,
+                      fontWeight: FontWeight.w600,
+                    ),
+              ),
+            ),
+          ],
         ),
         onTap: () => _openChat(connection),
       ),

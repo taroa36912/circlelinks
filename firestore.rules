@@ -6,6 +6,16 @@ service cloud.firestore {
       return request.auth != null && request.auth.uid != null;
     }
 
+    function userRole(uid) {
+      return isSignedIn() && uid != null
+        ? get(/databases/$(database)/documents/users/$(uid)).data.role
+        : null;
+    }
+
+    function isStudentUser() {
+      return isSignedIn() && userRole(request.auth.uid) == 'student';
+    }
+
     function isAdmin(circleId) {
       return isSignedIn() 
         && circleId != null 
@@ -23,7 +33,7 @@ service cloud.firestore {
 
     match /circles/{circleId} {
       allow read: if isSignedIn();
-      allow create: if isSignedIn();
+      allow create: if isStudentUser();
       allow update, delete: if isAdmin(circleId);
 
       match /members/{memberId} {
@@ -46,10 +56,7 @@ service cloud.firestore {
     }
 
     match /connectionRequests/{reqId} {
-      allow read: if isSignedIn() && (
-        ('fromCircleId' in resource.data && isAdmin(resource.data.fromCircleId)) || 
-        ('toCircleId' in resource.data && isAdmin(resource.data.toCircleId))
-      );
+      allow read: if isSignedIn();
       allow create: if isSignedIn() && 'fromCircleId' in request.resource.data && isAdmin(request.resource.data.fromCircleId);
       allow update, delete: if isSignedIn() && (
         ('fromCircleId' in resource.data && isAdmin(resource.data.fromCircleId)) || 
@@ -72,7 +79,7 @@ service cloud.firestore {
         request.auth.uid == resource.data.individualId || 
         ('circleId' in resource.data && isAdmin(resource.data.circleId))
       );
-      allow create: if isSignedIn() && (
+      allow create: if isStudentUser() && (
         request.auth.uid == request.resource.data.individualId || 
         ('circleId' in request.resource.data && isAdmin(request.resource.data.circleId))
       );
@@ -82,7 +89,11 @@ service cloud.firestore {
       );
       
       match /dm_messages/{msgId} {
-        allow read, create: if isSignedIn() && (
+        allow read: if isSignedIn() && (
+          request.auth.uid == get(/databases/$(database)/documents/dm_channels/$(channelId)).data.individualId || 
+          ('circleId' in get(/databases/$(database)/documents/dm_channels/$(channelId)).data && isAdmin(get(/databases/$(database)/documents/dm_channels/$(channelId)).data.circleId))
+        );
+        allow create: if isStudentUser() && (
           request.auth.uid == get(/databases/$(database)/documents/dm_channels/$(channelId)).data.individualId || 
           ('circleId' in get(/databases/$(database)/documents/dm_channels/$(channelId)).data && isAdmin(get(/databases/$(database)/documents/dm_channels/$(channelId)).data.circleId))
         );
@@ -104,6 +115,56 @@ service cloud.firestore {
         allow read: if isSignedIn();
         allow write: if isSignedIn() && request.auth.uid == attendanceUserId;
       }
+    }
+
+    // TODO_SECURITY: These rules are MVP-level. Circle admin check for recruitments
+    // should verify circle admin membership before writes. For now, authenticated
+    // users can create/read; only admins can modify their circle's recruitments.
+    match /recruitments/{recruitmentId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && 'circleId' in request.resource.data;
+      allow update: if isSignedIn()
+        && 'circleId' in resource.data
+        && isAdmin(resource.data.circleId);
+      allow delete: if isSignedIn()
+        && 'circleId' in resource.data
+        && isAdmin(resource.data.circleId);
+
+      match /applications/{applicationId} {
+        allow read: if isSignedIn();
+        allow create: if isSignedIn()
+          && request.resource.data.applicantUserId == request.auth.uid;
+        allow update: if isSignedIn() && (
+          request.resource.data.applicantUserId == request.auth.uid
+          || ('circleId' in get(/databases/$(database)/documents/recruitments/$(recruitmentId)).data
+              && isAdmin(get(/databases/$(database)/documents/recruitments/$(recruitmentId)).data.circleId))
+        );
+        allow delete: if isSignedIn()
+          && request.resource.data.applicantUserId == request.auth.uid;
+      }
+    }
+
+    // TODO_SECURITY: MVP rules for projects. Authenticated users can read/write public
+    // projects. For circle-created projects, admin check should be added.
+    match /projects/{projectId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn()
+        && request.resource.data.creatorId == request.auth.uid;
+      allow update: if isSignedIn() && (
+        resource.data.creatorId == request.auth.uid
+        || ('circleId' in resource.data && isAdmin(resource.data.circleId))
+      );
+      allow delete: if isSignedIn()
+        && resource.data.creatorId == request.auth.uid;
+    }
+
+    // TODO_SECURITY: Global tags. Authenticated users may read; tag creation/update
+    // should be limited to circle admins for circle-scoped tags.
+    // NOTE: circle-scoped tags live under circles/{circleId}/tags/{tagId}
+    // and are covered by the circles document match.
+    match /tags/{tagId} {
+      allow read: if isSignedIn();
+      allow create, update, delete: if isSignedIn();
     }
   }
 }

@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sizer/sizer.dart';
 import '../../core/app_export.dart';
-import '../../core/services/firestore_service.dart';
 
 class QRScanScreen extends ConsumerStatefulWidget {
   const QRScanScreen({super.key});
@@ -33,13 +31,14 @@ class _QRScanScreenState extends ConsumerState<QRScanScreen> {
 
     try {
       final firestoreService = ref.read(firestoreServiceProvider);
-      // scanData in this mvp is the userId. 
-      // In real app, it might be encrypted token.
+      final user = ref.read(firebaseAuthServiceProvider).currentUser;
       
       await firestoreService.markAttendance(
         eventId: _eventId!,
         userId: scanData,
         scanData: scanData,
+        method: 'manual',
+        checkedInBy: user?.uid,
       );
 
       if (mounted) {
@@ -87,13 +86,14 @@ class _QRScanScreenState extends ConsumerState<QRScanScreen> {
               ),
             ),
             SizedBox(height: 4.h),
-            const Text('または手動入力 (User ID)'),
+            const Text('QRコードまたはユーザーIDを入力'),
             SizedBox(height: 2.h),
             TextField(
               controller: _inputController,
               decoration: const InputDecoration(
                 border: OutlineInputBorder(),
-                labelText: 'User ID',
+                labelText: 'ユーザーID',
+                hintText: 'ユーザーIDを入力してください',
                 suffixIcon: Icon(Icons.qr_code),
               ),
             ),

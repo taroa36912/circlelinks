@@ -8,11 +8,18 @@ import 'package:flutter/services.dart'; // PlatformException
 
 class FirebaseAuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
-  final GoogleSignIn _googleSignIn = GoogleSignIn();
   bool _isGoogleSigningIn = false; // 多重実行防止フラグ
   // 👇 FirebaseFunctionsの初期化 (修正済み)
   final FirebaseFunctions _functions =
       FirebaseFunctions.instanceFor(region: 'asia-northeast1');
+
+  // GoogleSignIn は Web では使用しないため、モバイルでのみ遅延初期化する
+  // Web で即時初期化すると google_sign_in_web の clientId assertion でクラッシュする
+  GoogleSignIn? __googleSignIn;
+  GoogleSignIn get _googleSignIn {
+    __googleSignIn ??= GoogleSignIn();
+    return __googleSignIn!;
+  }
 
   Stream<User?> get authStateChanges => _auth.authStateChanges();
 

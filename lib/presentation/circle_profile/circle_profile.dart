@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:sizer/sizer.dart';
 
 import '../../core/app_export.dart';
-import '../../core/models/connection_request_model.dart'; // ConnectionRequestModel
+// ConnectionRequestModel
 
 class CircleProfile extends ConsumerStatefulWidget {
   const CircleProfile({super.key});
@@ -55,20 +55,29 @@ class _CircleProfileState extends ConsumerState<CircleProfile>
       return;
     }
 
-    final args =
-        ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
-    if (args == null || args['circleId'] == null) {
+    final rawArgs = ModalRoute.of(context)?.settings.arguments;
+
+    // Defensive parse: handle Map, CircleModel, String, or null
+    if (rawArgs is Map<String, dynamic>) {
+      _circleId = rawArgs['circleId'] as String?;
+      _isSelectionMode = rawArgs['isSelectionMode'] ?? false;
+      _sourceCircleId = rawArgs['sourceCircleId'] as String?;
+    } else if (rawArgs is CircleModel) {
+      _circleId = rawArgs.id;
+      _isSelectionMode = false;
+      _sourceCircleId = null;
+    } else if (rawArgs is String) {
+      _circleId = rawArgs;
+      _isSelectionMode = false;
+      _sourceCircleId = null;
+    }
+
+    if (_circleId == null || (_circleId?.isEmpty ?? true)) {
       setState(() {
         _isLoading = false;
       });
       return;
     }
-    _circleId = args['circleId'] as String;
-
-    // ⬇️ --- 引数からモード情報を取得 --- ⬇️
-    _isSelectionMode = args['isSelectionMode'] ?? false;
-    _sourceCircleId = args['sourceCircleId'];
-    // ⬆️ ---------------------------- ⬆️
 
     if (_currentUser!.uid == _circleId) {
       setState(() {
@@ -410,6 +419,90 @@ class _CircleProfileState extends ConsumerState<CircleProfile>
               ),
             ),
           ],
+          // Recruitment Info Section
+          SizedBox(height: 2.h),
+          Card(
+            child: Padding(
+              padding: EdgeInsets.all(4.w),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '募集情報',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                  ),
+                  SizedBox(height: 2.h),
+                  if (_circle!.isRecruiting) ...[
+                    if (_circle!.recruitmentHeadline != null &&
+                        _circle!.recruitmentHeadline!.isNotEmpty)
+                      Padding(
+                        padding: EdgeInsets.only(bottom: 1.h),
+                        child: Text(
+                          _circle!.recruitmentHeadline!,
+                          style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                                fontWeight: FontWeight.w600,
+                                color: Colors.green,
+                              ),
+                        ),
+                      ),
+                    if (_circle!.recruitmentTags.isNotEmpty) ...[
+                      SizedBox(height: 1.h),
+                      Wrap(
+                        spacing: 6,
+                        runSpacing: 4,
+                        children: _circle!.recruitmentTags
+                            .map((t) => Chip(
+                                  label: Text(t),
+                                  materialTapTargetSize:
+                                      MaterialTapTargetSize.shrinkWrap,
+                                  visualDensity: VisualDensity.compact,
+                                ))
+                            .toList(),
+                      ),
+                    ],
+                    SizedBox(height: 2.h),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed: () async {
+                          try {
+                            final firestoreService =
+                                ref.read(firestoreServiceProvider);
+                            final recruitments = await firestoreService
+                                .getOpenRecruitmentsForCircle(_circle!.id);
+                            if (recruitments.isNotEmpty) {
+                              if (mounted) {
+                                Navigator.pushNamed(
+                                  context,
+                                  AppRoutes.recruitmentDetails,
+                                  arguments: {
+                                    'recruitmentId': recruitments.first.id
+                                  },
+                                );
+                              }
+                            } else {
+                              _handleSendDm();
+                            }
+                          } catch (_) {
+                            _handleSendDm();
+                          }
+                        },
+                        icon: const Icon(Icons.send),
+                        label: const Text('応募・問い合わせ'),
+                      ),
+                    ),
+                  ] else ...[
+                    const Text(
+                      '現在、公式な募集はありません',
+                      style: TextStyle(color: Colors.grey),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
         ],
       ),
     );

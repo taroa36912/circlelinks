@@ -37,6 +37,11 @@ class _CircleManagementScreenState
   File? _coverImageFile;
   Uint8List? _coverImageBytes;
 
+  bool _isRecruiting = false;
+  late TextEditingController _recruitmentHeadlineController;
+  late TextEditingController _recruitmentTagsController;
+  late TextEditingController _featureTagsController;
+
   final List<String> _categories = [
     'Sports',
     'Culture',
@@ -57,6 +62,14 @@ class _CircleManagementScreenState
     _universityController =
         TextEditingController(text: widget.circle.universityName);
 
+    _isRecruiting = widget.circle.isRecruiting;
+    _recruitmentHeadlineController =
+        TextEditingController(text: widget.circle.recruitmentHeadline ?? '');
+    _recruitmentTagsController = TextEditingController(
+        text: widget.circle.recruitmentTags.join(', '));
+    _featureTagsController =
+        TextEditingController(text: widget.circle.featureTags.join(', '));
+
     _selectedCategory = widget.circle.category;
     if (!_categories.contains(_selectedCategory)) {
       _selectedCategory = 'Other';
@@ -69,6 +82,9 @@ class _CircleManagementScreenState
     _descriptionController.dispose();
     _memberCountController.dispose();
     _universityController.dispose();
+    _recruitmentHeadlineController.dispose();
+    _recruitmentTagsController.dispose();
+    _featureTagsController.dispose();
     super.dispose();
   }
 
@@ -145,6 +161,14 @@ class _CircleManagementScreenState
         profileImageUrl: profileImageUrl,
         coverImageUrl: coverImageUrl,
         updatedAt: DateTime.now(),
+        isRecruiting: _isRecruiting,
+        recruitmentHeadline: _recruitmentHeadlineController.text.trim().isNotEmpty
+            ? _recruitmentHeadlineController.text.trim()
+            : null,
+        recruitmentTags:
+            _recruitmentTagsController.text.split(',').map((s) => s.trim()).where((s) => s.isNotEmpty).toList(),
+        featureTags:
+            _featureTagsController.text.split(',').map((s) => s.trim()).where((s) => s.isNotEmpty).toList(),
       );
 
       await firestoreService.updateCircle(updatedCircle);
@@ -403,7 +427,7 @@ class _CircleManagementScreenState
               ),
               SizedBox(height: 2.h),
               DropdownButtonFormField<String>(
-                value: _selectedCategory,
+                initialValue: _selectedCategory,
                 decoration: const InputDecoration(labelText: 'カテゴリー'),
                 items: _categories.map((category) {
                   return DropdownMenuItem(
@@ -494,6 +518,54 @@ class _CircleManagementScreenState
                       ? Icon(Icons.group, size: 12.w, color: Colors.grey)
                       : null,
                 ),
+              ),
+              SizedBox(height: 4.h),
+              const Divider(),
+              SizedBox(height: 2.h),
+              Text('募集・タグ設定',
+                  style: theme.textTheme.titleLarge
+                      ?.copyWith(fontWeight: FontWeight.bold)),
+              SizedBox(height: 2.h),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: () {
+                    Navigator.pushNamed(
+                        context, AppRoutes.recruitmentManagement,
+                        arguments: {'circleId': widget.circle.id});
+                  },
+                  icon: const Icon(Icons.campaign),
+                  label: const Text('新規メンバー募集を管理'),
+                  style: ElevatedButton.styleFrom(
+                    padding: EdgeInsets.symmetric(vertical: 1.5.h),
+                  ),
+                ),
+              ),
+              SizedBox(height: 2.h),
+              SwitchListTile(
+                title: const Text('募集中にする'),
+                value: _isRecruiting,
+                onChanged: (v) => setState(() => _isRecruiting = v),
+              ),
+              TextFormField(
+                controller: _recruitmentHeadlineController,
+                decoration: const InputDecoration(
+                    labelText: '募集見出し',
+                    hintText: '例: 一緒に活動する仲間を募集中！'),
+              ),
+              SizedBox(height: 2.h),
+              TextFormField(
+                controller: _recruitmentTagsController,
+                decoration: const InputDecoration(
+                    labelText: '募集タグ',
+                    hintText: 'カンマ区切り 例: 新歓,初心者歓迎'),
+              ),
+              SizedBox(height: 2.h),
+              TextFormField(
+                controller: _featureTagsController,
+                decoration: const InputDecoration(
+                    labelText: '特徴タグ',
+                    hintText: 'カンマ区切り 例: アットホーム,全国大会出場'),
               ),
               SizedBox(height: 4.h),
               const Divider(),

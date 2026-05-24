@@ -15,6 +15,11 @@ class AttendanceModel {
   final AttendanceStatus status;
   final DateTime? checkedInAt;
   final DateTime createdAt;
+  final String checkInMethod;
+  final String? checkedInBy;
+  final String? qrTokenHash;
+  final DateTime? updatedAt;
+  final String? note;
 
   AttendanceModel({
     required this.id,
@@ -25,6 +30,11 @@ class AttendanceModel {
     this.status = AttendanceStatus.pending,
     this.checkedInAt,
     required this.createdAt,
+    this.checkInMethod = 'manual',
+    this.checkedInBy,
+    this.qrTokenHash,
+    this.updatedAt,
+    this.note,
   });
 
   factory AttendanceModel.fromFirestore(DocumentSnapshot doc) {
@@ -42,7 +52,12 @@ class AttendanceModel {
       checkedInAt: data['checkedInAt'] != null
           ? (data['checkedInAt'] as Timestamp).toDate()
           : null,
-      createdAt: (data['createdAt'] as Timestamp).toDate(),
+      createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      checkInMethod: data['checkInMethod'] ?? 'manual',
+      checkedInBy: data['checkedInBy'],
+      qrTokenHash: data['qrTokenHash'],
+      updatedAt: data['updatedAt'] != null ? (data['updatedAt'] as Timestamp).toDate() : null,
+      note: data['note'],
     );
   }
 
@@ -55,6 +70,11 @@ class AttendanceModel {
       'status': status.name,
       'checkedInAt': checkedInAt != null ? Timestamp.fromDate(checkedInAt!) : null,
       'createdAt': Timestamp.fromDate(createdAt),
+      'checkInMethod': checkInMethod,
+      'checkedInBy': checkedInBy,
+      'qrTokenHash': qrTokenHash,
+      'updatedAt': updatedAt != null ? Timestamp.fromDate(updatedAt!) : null,
+      'note': note,
     };
   }
   
@@ -67,6 +87,11 @@ class AttendanceModel {
     AttendanceStatus? status,
     DateTime? checkedInAt,
     DateTime? createdAt,
+    String? checkInMethod,
+    String? checkedInBy,
+    String? qrTokenHash,
+    DateTime? updatedAt,
+    String? note,
   }) {
     return AttendanceModel(
         id: id ?? this.id,
@@ -77,6 +102,11 @@ class AttendanceModel {
         status: status ?? this.status,
         checkedInAt: checkedInAt ?? this.checkedInAt,
         createdAt: createdAt ?? this.createdAt,
+        checkInMethod: checkInMethod ?? this.checkInMethod,
+        checkedInBy: checkedInBy ?? this.checkedInBy,
+        qrTokenHash: qrTokenHash ?? this.qrTokenHash,
+        updatedAt: updatedAt ?? this.updatedAt,
+        note: note ?? this.note,
     );
   }
 }

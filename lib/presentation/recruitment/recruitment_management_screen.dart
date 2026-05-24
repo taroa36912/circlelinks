@@ -33,7 +33,41 @@ class _RecruitmentManagementScreenState
             return const Center(child: CircularProgressIndicator());
           }
           if (snapshot.hasError) {
-            return Center(child: Text('エラー: ${snapshot.error}'));
+            final errStr = snapshot.error.toString();
+            final isPermissionDenied = errStr.contains('permission-denied');
+            return Center(
+              child: Padding(
+                padding: EdgeInsets.all(8.w),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      isPermissionDenied ? Icons.lock : Icons.error_outline,
+                      size: 64,
+                      color: colorScheme.onSurfaceVariant,
+                    ),
+                    SizedBox(height: 2.h),
+                    Text(
+                      isPermissionDenied
+                          ? '募集情報を読み込めませんでした。\n権限設定を確認してください。'
+                          : 'エラー: ${snapshot.error}',
+                      textAlign: TextAlign.center,
+                      style: theme.textTheme.bodyMedium,
+                    ),
+                    if (isPermissionDenied) ...[
+                      SizedBox(height: 1.h),
+                      Text(
+                        'Firestore Security Rules の設定が必要です。\nfirebase deploy --only firestore:rules を実行してください。',
+                        textAlign: TextAlign.center,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            );
           }
 
           final recruitments = snapshot.data ?? [];

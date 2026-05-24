@@ -10,6 +10,7 @@ class PortfolioHeaderWidget extends StatelessWidget {
   final String? profileImageUrl;
   final double completionPercentage;
   final VoidCallback onEditProfile;
+  final VoidCallback? onClose;
 
   const PortfolioHeaderWidget({
     super.key,
@@ -19,6 +20,7 @@ class PortfolioHeaderWidget extends StatelessWidget {
     this.profileImageUrl,
     required this.completionPercentage,
     required this.onEditProfile,
+    this.onClose,
   });
 
   @override
@@ -50,6 +52,18 @@ class PortfolioHeaderWidget extends StatelessWidget {
           children: [
             Row(
               children: [
+                if (onClose != null)
+                  IconButton(
+                    onPressed: onClose,
+                    icon: const Icon(Icons.close, color: Colors.white, size: 24),
+                    tooltip: '閉じる',
+                    style: IconButton.styleFrom(
+                      backgroundColor: Colors.white.withValues(alpha: 0.2),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(3.w),
+                      ),
+                    ),
+                  ),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,

@@ -22,10 +22,16 @@ class ProjectListScreen extends ConsumerWidget {
       ),
       body: projectsAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, stackTrace) => _ProjectErrorView(
-          message: error.toString(),
-          onRetry: () => ref.invalidate(openProjectsProvider),
-        ),
+        error: (error, stackTrace) {
+          final errStr = error.toString();
+          final isPermissionDenied = errStr.contains('permission-denied');
+          return _ProjectErrorView(
+            message: isPermissionDenied
+                ? 'プロジェクト一覧を読み込めませんでした。\n権限設定を確認してください。\nfirebase deploy --only firestore:rules を実行してください。'
+                : errStr,
+            onRetry: () => ref.invalidate(openProjectsProvider),
+          );
+        },
         data: (projects) {
           if (projects.isEmpty) {
             return _EmptyProjectView(

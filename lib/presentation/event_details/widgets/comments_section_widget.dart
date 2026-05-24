@@ -159,14 +159,14 @@ class _CommentsSectionWidgetState extends State<CommentsSectionWidget> {
             ),
             SizedBox(height: 1.h),
             Text(
-              'No comments yet',
+              'まだコメントはありません',
               style: AppTheme.lightTheme.textTheme.bodyMedium?.copyWith(
                 color: AppTheme.lightTheme.colorScheme.onSurfaceVariant,
               ),
             ),
             SizedBox(height: 0.5.h),
             Text(
-              'Be the first to comment!',
+              '最初のコメントを投稿しましょう',
               style: AppTheme.lightTheme.textTheme.bodySmall?.copyWith(
                 color: AppTheme.lightTheme.colorScheme.onSurfaceVariant
                     .withValues(alpha: 0.7),

@@ -135,42 +135,9 @@ class _EventDetailsState extends ConsumerState<EventDetails> {
     },
   ];
 
-  // Mock comments data
-  final List<Map<String, dynamic>> _comments = [
-    {
-      'id': 1,
-      'userName': 'Yuki Tanaka',
-      'userAvatar':
-          'https://images.pexels.com/photos/1239291/pexels-photo-1239291.jpeg?auto=compress&cs=tinysrgb&w=400',
-      'content':
-          'Really looking forward to this event! The venue looks amazing.',
-      'timestamp': DateTime.now().subtract(const Duration(hours: 3)),
-      'likes': 5,
-      'isLiked': false,
-    },
-    {
-      'id': 2,
-      'userName': 'Sakura Yamamoto',
-      'userAvatar':
-          'https://images.pexels.com/photos/1130626/pexels-photo-1130626.jpeg?auto=compress&cs=tinysrgb&w=400',
-      'content':
-          'Should we bring anything special? Also, is there a dress code?',
-      'timestamp': DateTime.now().subtract(const Duration(hours: 2)),
-      'likes': 3,
-      'isLiked': true,
-    },
-    {
-      'id': 3,
-      'userName': 'Hiroshi Sato',
-      'userAvatar':
-          'https://images.pexels.com/photos/2379004/pexels-photo-2379004.jpeg?auto=compress&cs=tinysrgb&w=400',
-      'content':
-          'The menu looks fantastic! Can\'t wait to try the traditional dishes.',
-      'timestamp': DateTime.now().subtract(const Duration(hours: 1)),
-      'likes': 2,
-      'isLiked': false,
-    },
-  ];
+  // Mock comments data — TODO: Persist comments to Firestore.
+  final List<Map<String, dynamic>> _comments = [];
+  // Now empty by default; comments are loaded from Firestore when implemented.
 
   @override
   void initState() {
@@ -318,6 +285,8 @@ class _EventDetailsState extends ConsumerState<EventDetails> {
   }
 
   void _addComment(String content) {
+    // TODO: Persist comments to Firestore.
+    // For now, comments are only held in local state and lost on screen exit.
     final newComment = {
       'id': _comments.length + 1,
       'userName': 'Current User',

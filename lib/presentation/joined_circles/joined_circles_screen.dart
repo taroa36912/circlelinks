@@ -152,7 +152,7 @@ class _JoinedCirclesScreenState extends ConsumerState<JoinedCirclesScreen> {
                   Navigator.pushNamed(
                     context,
                     AppRoutes.circleProfile,
-                    arguments: circle,
+                    arguments: {'circleId': circle.id},
                   );
                 },
               ),

@@ -268,8 +268,15 @@ class _ProjectCreationScreenState extends ConsumerState<ProjectCreationScreen> {
       }
     } catch (e) {
       if (mounted) {
+        final errStr = e.toString();
+        final isPermissionDenied = errStr.contains('permission-denied');
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.toString())),
+          SnackBar(
+            content: Text(isPermissionDenied
+                ? '募集の作成に失敗しました。権限設定を確認してください。'
+                : errStr),
+            backgroundColor: isPermissionDenied ? Colors.orange : Colors.red,
+          ),
         );
       }
     } finally {

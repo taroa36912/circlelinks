@@ -216,6 +216,14 @@ class _PortfolioBuilderState extends ConsumerState<PortfolioBuilder>
                     completionPercentage:
                         _portfolioData['completionPercentage'] as double,
                     onEditProfile: () => _showEditProfileDialog(user),
+                    onClose: () {
+                      if (Navigator.canPop(context)) {
+                        Navigator.pop(context);
+                      } else {
+                        Navigator.pushNamedAndRemoveUntil(
+                            context, AppRoutes.myPage, (_) => false);
+                      }
+                    },
                   ),
                 ),
               ];

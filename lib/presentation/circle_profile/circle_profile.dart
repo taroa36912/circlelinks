@@ -55,20 +55,29 @@ class _CircleProfileState extends ConsumerState<CircleProfile>
       return;
     }
 
-    final args =
-        ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
-    if (args == null || args['circleId'] == null) {
+    final rawArgs = ModalRoute.of(context)?.settings.arguments;
+
+    // Defensive parse: handle Map, CircleModel, String, or null
+    if (rawArgs is Map<String, dynamic>) {
+      _circleId = rawArgs['circleId'] as String?;
+      _isSelectionMode = rawArgs['isSelectionMode'] ?? false;
+      _sourceCircleId = rawArgs['sourceCircleId'] as String?;
+    } else if (rawArgs is CircleModel) {
+      _circleId = rawArgs.id;
+      _isSelectionMode = false;
+      _sourceCircleId = null;
+    } else if (rawArgs is String) {
+      _circleId = rawArgs;
+      _isSelectionMode = false;
+      _sourceCircleId = null;
+    }
+
+    if (_circleId == null || (_circleId?.isEmpty ?? true)) {
       setState(() {
         _isLoading = false;
       });
       return;
     }
-    _circleId = args['circleId'] as String;
-
-    // ⬇️ --- 引数からモード情報を取得 --- ⬇️
-    _isSelectionMode = args['isSelectionMode'] ?? false;
-    _sourceCircleId = args['sourceCircleId'];
-    // ⬆️ ---------------------------- ⬆️
 
     if (_currentUser!.uid == _circleId) {
       setState(() {

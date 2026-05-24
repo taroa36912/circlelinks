@@ -22,7 +22,6 @@ class _CircleDiscoveryState extends ConsumerState<CircleDiscovery>
     with TickerProviderStateMixin {
   late TabController _tabController;
   final TextEditingController _searchController = TextEditingController();
-  final ScrollController _scrollController = ScrollController();
   
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
@@ -63,7 +62,6 @@ class _CircleDiscoveryState extends ConsumerState<CircleDiscovery>
   void initState() {
     super.initState();
     _tabController = TabController(length: _tabs.length, vsync: this);
-    _scrollController.addListener(_onScroll);
     _tabController.addListener(_onTabChanged);
     
     _setupAuthListener();
@@ -118,14 +116,16 @@ class _CircleDiscoveryState extends ConsumerState<CircleDiscovery>
     _circlesSubscription?.cancel();
     _tabController.dispose();
     _searchController.dispose();
-    _scrollController.dispose();
     super.dispose();
   }
 
-  void _onScroll() {
-    if (_scrollController.position.pixels >=
-        _scrollController.position.maxScrollExtent - 200) {
-      _loadMoreCircles();
+  void _onScroll(ScrollNotification notification) {
+    if (notification is ScrollUpdateNotification ||
+        notification is OverscrollNotification) {
+      if (notification.metrics.pixels >=
+          notification.metrics.maxScrollExtent - 200) {
+        _loadMoreCircles();
+      }
     }
   }
 
@@ -368,6 +368,7 @@ class _CircleDiscoveryState extends ConsumerState<CircleDiscovery>
                           Expanded(
                             child: ListView(
                               scrollDirection: Axis.horizontal,
+                              primary: false,
                               padding: EdgeInsets.symmetric(horizontal: 4.w),
                               children: [
                                 ..._buildActiveFilterChips(),
@@ -396,7 +397,12 @@ class _CircleDiscoveryState extends ConsumerState<CircleDiscovery>
             ),
           ];
         },
-        body: RefreshIndicator(
+        body: NotificationListener<ScrollNotification>(
+          onNotification: (notification) {
+            _onScroll(notification);
+            return false;
+          },
+          child: RefreshIndicator(
           onRefresh: _refreshCircles,
           child: _filteredCircles.isEmpty
               ? EmptyStateWidget(
@@ -406,7 +412,6 @@ class _CircleDiscoveryState extends ConsumerState<CircleDiscovery>
                   onActionPressed: _showFilterModal,
                 )
               : ListView.builder(
-                  controller: _scrollController,
                   padding: EdgeInsets.symmetric(vertical: 1.h),
                   itemCount: _filteredCircles.length + (_isLoadingMore ? 1 : 0),
                   itemBuilder: (context, index) {
@@ -437,6 +442,7 @@ class _CircleDiscoveryState extends ConsumerState<CircleDiscovery>
                     );
                   },
                 ),
+          ),
         ),
       ),
       floatingActionButton: FloatingActionButton(

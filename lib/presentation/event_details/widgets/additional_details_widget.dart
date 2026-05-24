@@ -104,24 +104,22 @@ class AdditionalDetailsWidget extends StatelessWidget {
   Widget _buildPhotoGrid() {
     final displayPhotos = photos.take(6).toList();
 
-    return SizedBox(
-      height: 20.h,
-      child: GridView.builder(
-        physics: const NeverScrollableScrollPhysics(),
-        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 3,
-          crossAxisSpacing: 2.w,
-          mainAxisSpacing: 1.h,
-          childAspectRatio: 1,
-        ),
-        itemCount: displayPhotos.length > 5 ? 6 : displayPhotos.length,
-        itemBuilder: (context, index) {
-          if (index == 5 && photos.length > 6) {
-            return _buildMorePhotosIndicator();
-          }
-          return _buildPhotoThumbnail(displayPhotos[index]);
-        },
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 3,
+        crossAxisSpacing: 2.w,
+        mainAxisSpacing: 1.h,
+        childAspectRatio: 1,
       ),
+      itemCount: displayPhotos.length > 5 ? 6 : displayPhotos.length,
+      itemBuilder: (context, index) {
+        if (index == 5 && photos.length > 6) {
+          return _buildMorePhotosIndicator();
+        }
+        return _buildPhotoThumbnail(displayPhotos[index]);
+      },
     );
   }
 

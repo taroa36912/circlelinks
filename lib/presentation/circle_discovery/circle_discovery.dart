@@ -338,20 +338,59 @@ class _CircleDiscoveryState extends ConsumerState<CircleDiscovery>
                     ),
                   ),
               ],
-              bottom: PreferredSize(
-                preferredSize: Size.fromHeight(31.h), 
-                child: Container(
-                  color: colorScheme.surface,
-                  child: Column(
-                    children: [
-                      // ... (SearchBar, TabBar など変更なし) ...
-                      SearchBarWidget(controller: _searchController, onChanged: _onSearchChanged, onVoiceSearch: _onVoiceSearch, hintText: 'Search circles in Japanese or English...',),
-                      Container(margin: EdgeInsets.symmetric(horizontal: 4.w), child: TabBar(controller: _tabController, isScrollable: true, indicatorColor: colorScheme.primary, labelColor: colorScheme.primary, unselectedLabelColor: colorScheme.onSurfaceVariant, tabs: _tabs.map((tab) => Tab(text: tab)).toList(),),),
-                      SizedBox(height: 1.h),
-                      SizedBox(height: 6.h, child: Row(children: [Expanded(child: ListView(scrollDirection: Axis.horizontal, padding: EdgeInsets.symmetric(horizontal: 4.w), children: [..._buildActiveFilterChips(), if (_buildActiveFilterChips().isEmpty) FilterChipWidget(label: 'All Circles', count: _filteredCircles.length, isSelected: false,),],),), Padding(padding: EdgeInsets.only(right: 4.w), child: SortButtonWidget(currentSort: _currentSort, onSortChanged: _onSortChanged,),),],),),
-                      SizedBox(height: 1.h),
-                    ],
-                  ),
+              bottom: TabBar(
+                controller: _tabController,
+                isScrollable: true,
+                indicatorColor: colorScheme.primary,
+                labelColor: colorScheme.primary,
+                unselectedLabelColor: colorScheme.onSurfaceVariant,
+                tabs: _tabs.map((tab) => Tab(text: tab)).toList(),
+              ),
+            ),
+            SliverToBoxAdapter(
+              child: Container(
+                color: colorScheme.surface,
+                padding: EdgeInsets.only(bottom: 1.h),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    SearchBarWidget(
+                      controller: _searchController,
+                      onChanged: _onSearchChanged,
+                      onVoiceSearch: _onVoiceSearch,
+                      hintText: 'Search circles in Japanese or English...',
+                    ),
+                    SizedBox(height: 1.h),
+                    SizedBox(
+                      height: 6.h,
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: ListView(
+                              scrollDirection: Axis.horizontal,
+                              padding: EdgeInsets.symmetric(horizontal: 4.w),
+                              children: [
+                                ..._buildActiveFilterChips(),
+                                if (_buildActiveFilterChips().isEmpty)
+                                  FilterChipWidget(
+                                    label: 'All Circles',
+                                    count: _filteredCircles.length,
+                                    isSelected: false,
+                                  ),
+                              ],
+                            ),
+                          ),
+                          Padding(
+                            padding: EdgeInsets.only(right: 4.w),
+                            child: SortButtonWidget(
+                              currentSort: _currentSort,
+                              onSortChanged: _onSortChanged,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),

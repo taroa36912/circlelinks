@@ -119,16 +119,28 @@ class _MyPageScreenState extends ConsumerState<MyPageScreen> {
         if (hasCircle) ...[
            // ✅ サークル作成済みの場合
           _buildMenuSection(theme, "サークル活動"),
-          _buildMenuItem(
-            theme,
-            icon: Icons.admin_panel_settings_outlined, // 管理アイコン
-            title: "サークル管理",
-            subtitle: "サークル情報の編集・DM確認",
-            onTap: () {
-              Navigator.pushNamed(context, AppRoutes.myCirclesList);
-            },
-          ),
-          _buildMenuItem(
+           _buildMenuItem(
+             theme,
+             icon: Icons.admin_panel_settings_outlined, // 管理アイコン
+             title: "サークル管理",
+             subtitle: "サークル情報の編集・DM確認",
+             onTap: () {
+               Navigator.pushNamed(context, AppRoutes.myCirclesList);
+             },
+           ),
+           _buildMenuItem(
+             theme,
+             icon: Icons.campaign_outlined,
+             title: "募集管理",
+             subtitle: "新規メンバー募集の作成・管理",
+             onTap: () {
+               if (_myCircleData != null) {
+                 Navigator.pushNamed(context, AppRoutes.recruitmentManagement,
+                     arguments: {'circleId': _myCircleData!.id});
+               }
+             },
+           ),
+           _buildMenuItem(
             theme,
             icon: Icons.group_outlined,
             title: "所属サークル一覧", // 将来的に複数サークル対応

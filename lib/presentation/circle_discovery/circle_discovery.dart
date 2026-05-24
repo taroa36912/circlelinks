@@ -179,9 +179,12 @@ class _CircleDiscoveryState extends ConsumerState<CircleDiscovery>
         final university = circle.universityName.toLowerCase();
         final query = _searchQuery.toLowerCase();
 
-        return name.contains(query) ||
+          return name.contains(query) ||
             description.contains(query) ||
-            university.contains(query);
+            university.contains(query) ||
+            circle.recruitmentHeadline?.toLowerCase().contains(query) == true ||
+            circle.recruitmentTags.any((t) => t.toLowerCase().contains(query)) ||
+            circle.featureTags.any((t) => t.toLowerCase().contains(query));
       }).toList();
     }
 

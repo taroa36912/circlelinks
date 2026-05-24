@@ -288,6 +288,33 @@ class _EventDetailsState extends ConsumerState<EventDetails> {
 
     // Update event data if needed
     _eventData['userStatus'] = newStatus;
+
+    // Persist RSVP to Firestore
+    final authService = ref.read(firebaseAuthServiceProvider);
+    final user = authService.currentUser;
+    if (user != null && _eventId != null) {
+      final firestoreService = ref.read(firestoreServiceProvider);
+      AttendanceStatus stat;
+      switch (newStatus) {
+        case 'attending':
+          stat = AttendanceStatus.attending;
+          break;
+        case 'not_attending':
+          stat = AttendanceStatus.absent;
+          break;
+        default:
+          stat = AttendanceStatus.pending;
+      }
+      firestoreService.updateRsvpStatus(
+        eventId: _eventId!,
+        userId: user.uid,
+        status: stat,
+        userName: user.displayName ?? user.email ?? 'ユーザー',
+        userProfileImageUrl: user.photoURL,
+      ).catchError((e) {
+        debugPrint("Failed to persist RSVP: $e");
+      });
+    }
   }
 
   void _addComment(String content) {

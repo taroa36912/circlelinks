@@ -143,6 +143,70 @@ class CircleCardWidget extends StatelessWidget {
 
                   SizedBox(height: 1.5.h),
 
+                  // Recruitment Status
+                  if (circleData.isRecruiting) ...[
+                    Container(
+                      padding: EdgeInsets.symmetric(
+                          horizontal: 2.w, vertical: 0.5.h),
+                      decoration: BoxDecoration(
+                        color: Colors.green.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.campaign,
+                              size: 14, color: Colors.green),
+                          SizedBox(width: 1.w),
+                          Text(
+                            '募集中',
+                            style: theme.textTheme.labelSmall?.copyWith(
+                              color: Colors.green,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    if (circleData.recruitmentHeadline != null &&
+                        circleData.recruitmentHeadline!.isNotEmpty) ...[
+                      SizedBox(height: 0.5.h),
+                      Text(
+                        circleData.recruitmentHeadline!,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: colorScheme.onSurfaceVariant,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                    if (circleData.recruitmentTags.isNotEmpty) ...[
+                      SizedBox(height: 0.5.h),
+                      Wrap(
+                        spacing: 4,
+                        runSpacing: 4,
+                        children: circleData.recruitmentTags.take(3).map((tag) {
+                          return Container(
+                            padding: EdgeInsets.symmetric(
+                                horizontal: 1.5.w, vertical: 0.2.h),
+                            decoration: BoxDecoration(
+                              color: colorScheme.surfaceContainerHighest,
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              tag,
+                              style: theme.textTheme.labelSmall?.copyWith(
+                                color: colorScheme.onSurfaceVariant,
+                                fontSize: 10,
+                              ),
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                    ],
+                    SizedBox(height: 0.5.h),
+                  ],
+
                   // Member Count and Activity Level
                   Row(
                     children: [

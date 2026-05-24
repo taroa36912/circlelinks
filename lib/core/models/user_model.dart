@@ -75,6 +75,8 @@ class UserModel {
   final List<PortfolioItem> portfolioItems;
   final List<Map<String, dynamic>> portfolioAchievements;
   final List<Map<String, dynamic>> portfolioSkills;
+  final List<String> skillTags;
+  final List<String> interestTags;
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -92,6 +94,8 @@ class UserModel {
     List<Map<String, dynamic>>? portfolioSkills,
     required this.createdAt,
     required this.updatedAt,
+    this.skillTags = const [],
+    this.interestTags = const [],
   })  : role = role ?? 'guest',
         accountType = accountType ??
             ((role ?? 'guest') == 'student' ? 'university' : 'guest'),
@@ -126,6 +130,8 @@ class UserModel {
           rawPortfolioSkills.whereType<Map<String, dynamic>>().toList(),
       createdAt: (data['createdAt'] as Timestamp).toDate(),
       updatedAt: (data['updatedAt'] as Timestamp).toDate(),
+      skillTags: List<String>.from(data['skillTags'] ?? []),
+      interestTags: List<String>.from(data['interestTags'] ?? []),
     );
   }
 
@@ -167,6 +173,8 @@ class UserModel {
       'portfolioItems': portfolioItems.map((item) => item.toMap()).toList(),
       'portfolioAchievements': portfolioAchievements,
       'portfolioSkills': portfolioSkills,
+      'skillTags': skillTags,
+      'interestTags': interestTags,
       'createdAt': Timestamp.fromDate(createdAt),
       'updatedAt': Timestamp.fromDate(updatedAt),
     };
@@ -182,6 +190,8 @@ class UserModel {
     List<PortfolioItem>? portfolioItems,
     List<Map<String, dynamic>>? portfolioAchievements,
     List<Map<String, dynamic>>? portfolioSkills,
+    List<String>? skillTags,
+    List<String>? interestTags,
     DateTime? updatedAt,
   }) {
     return UserModel(
@@ -197,6 +207,8 @@ class UserModel {
       portfolioAchievements:
           portfolioAchievements ?? this.portfolioAchievements,
       portfolioSkills: portfolioSkills ?? this.portfolioSkills,
+      skillTags: skillTags ?? this.skillTags,
+      interestTags: interestTags ?? this.interestTags,
       createdAt: createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );

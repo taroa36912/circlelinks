@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:sizer/sizer.dart';
 import '../../core/app_export.dart';
 import '../../core/models/member_model.dart';
 import '../../core/models/user_model.dart';
+import '../../core/utils/safe_image_helper.dart';
 
 class CircleMembersScreen extends ConsumerStatefulWidget {
   final String circleId;
@@ -114,22 +116,23 @@ class _CircleMembersScreenState extends ConsumerState<CircleMembersScreen> {
               final isMe = member.userId == currentUid;
 
               return ListTile(
-                leading: CircleAvatar(
-                  backgroundImage:
-                      avatarUrl != null ? NetworkImage(avatarUrl) : null,
-                  child: avatarUrl == null
-                      ? Icon(
-                          member.role == 'admin' ? Icons.star : Icons.person)
-                      : null,
+                leading: safeCircleAvatar(
+                  imageUrl: avatarUrl,
+                  fallback: Icon(
+                      member.role == 'admin' ? Icons.star : Icons.person),
                 ),
                 title: Text(displayName),
-                subtitle: Text(member.role == 'admin' ? '管理者' : 'メンバー'),
+                subtitle: Text(member.displayRole ?? (member.role == 'admin' ? '管理者' : 'メンバー')),
                 trailing: isMe
                     ? const Chip(label: Text('あなた'))
                     : PopupMenuButton<String>(
                         onSelected: (action) => _handleAction(
                             context, action, member.userId, member.role),
                         itemBuilder: (context) => [
+                          PopupMenuItem(
+                            value: 'edit_tags',
+                            child: const Text('タグ・役職を編集'),
+                          ),
                           PopupMenuItem(
                             value: 'toggle_role',
                             child: Text(member.role == 'admin'
@@ -156,7 +159,58 @@ class _CircleMembersScreenState extends ConsumerState<CircleMembersScreen> {
     final firestoreService = ref.read(firestoreServiceProvider);
 
     try {
-      if (action == 'toggle_role') {
+      if (action == 'edit_tags') {
+        final memberData = await firestoreService.getMemberData(widget.circleId, userId);
+        final displayRoleCtrl = TextEditingController(text: memberData?['displayRole'] ?? '');
+        final roleTagsCtrl = TextEditingController(text: (memberData?['roleTags'] as List<dynamic>?)?.join(', ') ?? '');
+        final skillTagsCtrl = TextEditingController(text: (memberData?['skillTags'] as List<dynamic>?)?.join(', ') ?? '');
+
+        if (!context.mounted) return;
+        final result = await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text('タグ・役職を編集'),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    controller: displayRoleCtrl,
+                    decoration: const InputDecoration(labelText: '役職名'),
+                  ),
+                  SizedBox(height: 2.h),
+                  TextField(
+                    controller: roleTagsCtrl,
+                    decoration: const InputDecoration(labelText: '役割タグ (カンマ区切り)'),
+                  ),
+                  SizedBox(height: 2.h),
+                  TextField(
+                    controller: skillTagsCtrl,
+                    decoration: const InputDecoration(labelText: 'スキルタグ (カンマ区切り)'),
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('キャンセル')),
+              ElevatedButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('保存')),
+            ],
+          ),
+        );
+
+        if (result == true) {
+          await firestoreService.updateCircleMemberTags(
+            circleId: widget.circleId,
+            userId: userId,
+            displayRole: displayRoleCtrl.text.trim().isNotEmpty ? displayRoleCtrl.text.trim() : null,
+            roleTags: roleTagsCtrl.text.split(',').map((s) => s.trim()).where((s) => s.isNotEmpty).toList(),
+            skillTags: skillTagsCtrl.text.split(',').map((s) => s.trim()).where((s) => s.isNotEmpty).toList(),
+          );
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('タグを更新しました')));
+          }
+        }
+      } else if (action == 'toggle_role') {
         final newRole = currentRole == 'admin' ? 'member' : 'admin';
         // ロール変更後はキャッシュを削除して次回再取得させる
         _resolvedUsers.remove(userId);

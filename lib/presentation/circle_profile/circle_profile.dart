@@ -410,6 +410,90 @@ class _CircleProfileState extends ConsumerState<CircleProfile>
               ),
             ),
           ],
+          // Recruitment Info Section
+          SizedBox(height: 2.h),
+          Card(
+            child: Padding(
+              padding: EdgeInsets.all(4.w),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '募集情報',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                  ),
+                  SizedBox(height: 2.h),
+                  if (_circle!.isRecruiting) ...[
+                    if (_circle!.recruitmentHeadline != null &&
+                        _circle!.recruitmentHeadline!.isNotEmpty)
+                      Padding(
+                        padding: EdgeInsets.only(bottom: 1.h),
+                        child: Text(
+                          _circle!.recruitmentHeadline!,
+                          style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                                fontWeight: FontWeight.w600,
+                                color: Colors.green,
+                              ),
+                        ),
+                      ),
+                    if (_circle!.recruitmentTags.isNotEmpty) ...[
+                      SizedBox(height: 1.h),
+                      Wrap(
+                        spacing: 6,
+                        runSpacing: 4,
+                        children: _circle!.recruitmentTags
+                            .map((t) => Chip(
+                                  label: Text(t),
+                                  materialTapTargetSize:
+                                      MaterialTapTargetSize.shrinkWrap,
+                                  visualDensity: VisualDensity.compact,
+                                ))
+                            .toList(),
+                      ),
+                    ],
+                    SizedBox(height: 2.h),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed: () async {
+                          try {
+                            final firestoreService =
+                                ref.read(firestoreServiceProvider);
+                            final recruitments = await firestoreService
+                                .getOpenRecruitmentsForCircle(_circle!.id);
+                            if (recruitments.isNotEmpty) {
+                              if (mounted) {
+                                Navigator.pushNamed(
+                                  context,
+                                  AppRoutes.recruitmentDetails,
+                                  arguments: {
+                                    'recruitmentId': recruitments.first.id
+                                  },
+                                );
+                              }
+                            } else {
+                              _handleSendDm();
+                            }
+                          } catch (_) {
+                            _handleSendDm();
+                          }
+                        },
+                        icon: const Icon(Icons.send),
+                        label: const Text('応募・問い合わせ'),
+                      ),
+                    ),
+                  ] else ...[
+                    const Text(
+                      '現在、公式な募集はありません',
+                      style: TextStyle(color: Colors.grey),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
         ],
       ),
     );

@@ -305,11 +305,10 @@ class _CircleManagementScreenState
                   elevation: 1,
                   margin: EdgeInsets.only(bottom: 1.h),
                   child: ListTile(
-                    leading: CircleAvatar(
-                      backgroundImage:
-                          profileUrl != null ? NetworkImage(profileUrl) : null,
-                      child:
-                          profileUrl == null ? const Icon(Icons.person) : null,
+                    leading: SafeAvatarWidget(
+                      imageUrl: profileUrl,
+                      radius: 20,
+                      fallback: const Icon(Icons.person),
                     ),
                     title: Text(displayName,
                         style: const TextStyle(fontWeight: FontWeight.bold)),
@@ -470,28 +469,31 @@ class _CircleManagementScreenState
                   decoration: BoxDecoration(
                     color: theme.colorScheme.surfaceContainerHighest,
                     borderRadius: BorderRadius.circular(12),
-                    image: _coverImageBytes != null
-                        ? DecorationImage(
-                            image: MemoryImage(_coverImageBytes!),
-                            fit: BoxFit.cover)
-                        : (_coverImageFile != null
-                            ? DecorationImage(
-                                image: FileImage(_coverImageFile!),
-                                fit: BoxFit.cover)
-                            : (widget.circle.coverImageUrl != null
-                                ? DecorationImage(
-                                    image: NetworkImage(
-                                        widget.circle.coverImageUrl!),
-                                    fit: BoxFit.cover)
-                                : null)),
                   ),
-                  child: (_coverImageBytes == null &&
-                          _coverImageFile == null &&
-                          widget.circle.coverImageUrl == null)
-                      ? const Center(
-                          child: Icon(Icons.add_photo_alternate,
-                              size: 50, color: Colors.grey))
-                      : null,
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: _coverImageBytes != null
+                        ? Image.memory(_coverImageBytes!, fit: BoxFit.cover)
+                        : _coverImageFile != null
+                            ? Image.file(_coverImageFile!, fit: BoxFit.cover)
+                            : widget.circle.coverImageUrl != null
+                                ? Image.network(
+                                    widget.circle.coverImageUrl!,
+                                    fit: BoxFit.cover,
+                                    width: double.infinity,
+                                    height: 20.h,
+                                    errorBuilder:
+                                        (context, error, stackTrace) =>
+                                            const Center(
+                                                child: Icon(
+                                                    Icons.add_photo_alternate,
+                                                    size: 50,
+                                                    color: Colors.grey)),
+                                  )
+                                : const Center(
+                                    child: Icon(Icons.add_photo_alternate,
+                                        size: 50, color: Colors.grey)),
+                  ),
                 ),
               ),
               SizedBox(height: 3.h),
@@ -501,23 +503,27 @@ class _CircleManagementScreenState
               SizedBox(height: 1.h),
               GestureDetector(
                 onTap: () => _pickImage(isProfile: true),
-                child: CircleAvatar(
-                  radius: 12.w,
-                  backgroundColor: theme.colorScheme.surfaceContainerHighest,
-                  backgroundImage: _profileImageBytes != null
-                      ? MemoryImage(_profileImageBytes!)
-                      : (_profileImageFile != null
-                          ? FileImage(_profileImageFile!)
-                          : (widget.circle.profileImageUrl != null
-                              ? NetworkImage(widget.circle.profileImageUrl!)
-                                  as ImageProvider
-                              : null)),
-                  child: (_profileImageBytes == null &&
-                          _profileImageFile == null &&
-                          widget.circle.profileImageUrl == null)
-                      ? Icon(Icons.group, size: 12.w, color: Colors.grey)
-                      : null,
-                ),
+                child: _profileImageBytes != null
+                    ? CircleAvatar(
+                        radius: 12.w,
+                        backgroundColor: theme.colorScheme.surfaceContainerHighest,
+                        backgroundImage: MemoryImage(_profileImageBytes!),
+                      )
+                    : _profileImageFile != null
+                        ? CircleAvatar(
+                            radius: 12.w,
+                            backgroundColor:
+                                theme.colorScheme.surfaceContainerHighest,
+                            backgroundImage: FileImage(_profileImageFile!),
+                          )
+                        : SafeAvatarWidget(
+                            imageUrl: widget.circle.profileImageUrl,
+                            radius: 12.w,
+                            backgroundColor:
+                                theme.colorScheme.surfaceContainerHighest,
+                            fallback: Icon(Icons.group,
+                                size: 12.w, color: Colors.grey),
+                          ),
               ),
               SizedBox(height: 4.h),
               const Divider(),

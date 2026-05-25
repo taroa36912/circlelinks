@@ -1,22 +1,15 @@
 import 'package:flutter/material.dart';
 
 /// Returns a safe [NetworkImage] provider, or null if the URL is null/empty.
-/// Works around Google profile photo URLs that may return HTTP 429 by using
-/// the [CircleAvatar.onBackgroundImageError] callback pattern.
 ImageProvider? safeNetworkImage(String? url) {
   if (url == null || url.trim().isEmpty) return null;
   return NetworkImage(url);
 }
 
-/// Filter out known-bad Google user-content profile photo URLs that may
-/// cause HTTP 429 rate-limit errors. Returns the original URL or null if
-/// the URL pattern suggests it should be skipped to avoid a crash.
+/// Filter out known-bad or invalid image URLs. Returns the original URL
+/// or null if the URL should be skipped.
 String? safePhotoUrl(String? url) {
   if (url == null || url.trim().isEmpty) return null;
-
-  // Google user-content profile image URLs can return 429.
-  // We keep them but this function exists as a filter point if needed.
-  // For now we simply validate the URL looks plausible.
   final trimmed = url.trim();
   if (!trimmed.startsWith('http://') && !trimmed.startsWith('https://')) {
     return null;
@@ -24,35 +17,49 @@ String? safePhotoUrl(String? url) {
   return trimmed;
 }
 
-/// A reusable [CircleAvatar] that gracefully degrades on network image
-/// failures. Shows [fallback] (default: Icons.person) when no image is
-/// available or when the image fails to load.
+/// A reusable circular avatar that gracefully degrades on network image
+/// failures (including HTTP 429 from Google profile photo URLs).
+/// Uses [Image.network] with [errorBuilder] internally for robust
+/// fallback, avoiding the limitations of [CircleAvatar.onBackgroundImageError].
 Widget safeCircleAvatar({
   String? imageUrl,
   double? radius,
+  double? size,
   Widget? fallback,
   Color? backgroundColor,
 }) {
   final safeUrl = safePhotoUrl(imageUrl);
-  final provider = safeNetworkImage(safeUrl);
+  final double effectiveSize = size ?? (radius != null ? radius * 2 : 48);
+  final double effectiveRadius = radius ?? effectiveSize / 2;
 
-  return CircleAvatar(
-    radius: radius,
-    backgroundColor: backgroundColor,
-    backgroundImage: provider,
-    onBackgroundImageError: provider != null
-        ? (_, __) {
-            debugPrint('⚡ CircleAvatar image failed to load: $safeUrl');
-          }
-        : null,
-    child: provider == null
-        ? (fallback ?? const Icon(Icons.person))
-        : null,
+  if (safeUrl == null) {
+    return CircleAvatar(
+      radius: effectiveRadius,
+      backgroundColor: backgroundColor,
+      child: fallback ?? const Icon(Icons.person),
+    );
+  }
+
+  return ClipOval(
+    child: Image.network(
+      safeUrl,
+      width: effectiveSize,
+      height: effectiveSize,
+      fit: BoxFit.cover,
+      errorBuilder: (context, error, stackTrace) {
+        return CircleAvatar(
+          radius: effectiveRadius,
+          backgroundColor: backgroundColor,
+          child: fallback ?? const Icon(Icons.person),
+        );
+      },
+    ),
   );
 }
 
-/// A safe [Image.network] wrapper that renders [fallback] on HTTP errors
-/// (including 429 responses).
+/// A safe [Image.network] wrapper that renders [errorWidget] on HTTP errors
+/// (including 429 responses). If the URL is null/empty/invalid, renders
+/// the errorWidget immediately.
 Widget safeNetworkImageWidget(
   String? url, {
   BoxFit fit = BoxFit.cover,
@@ -74,7 +81,6 @@ Widget safeNetworkImageWidget(
     width: width,
     height: height,
     errorBuilder: (context, error, stackTrace) {
-      debugPrint('⚡ Image.network failed: $error for $safeUrl');
       return errorWidget ?? const Icon(Icons.broken_image, size: 48);
     },
   );

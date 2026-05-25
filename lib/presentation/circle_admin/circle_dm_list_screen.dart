@@ -60,14 +60,10 @@ class _CircleDmListScreenState extends ConsumerState<CircleDmListScreen> {
           itemBuilder: (context, index) {
             final channel = channels[index];
             return ListTile(
-              leading: CircleAvatar(
-                // 個人のアバター (実装済みなら)
-                backgroundImage: (channel.individualAvatarUrl != null)
-                  ? NetworkImage(channel.individualAvatarUrl!)
-                  : null,
-                child: (channel.individualAvatarUrl == null)
-                  ? const Icon(Icons.person)
-                  : null,
+              leading: SafeAvatarWidget(
+                imageUrl: channel.individualAvatarUrl,
+                radius: 20,
+                fallback: const Icon(Icons.person),
               ),
               // ⬇️ サークル管理画面なので、相手(個人)の名前を表示 ⬇️
               title: Text(

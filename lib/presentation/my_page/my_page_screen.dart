@@ -254,13 +254,11 @@ class _MyPageScreenState extends ConsumerState<MyPageScreen> {
         color: theme.colorScheme.surface,
         child: Row(
           children: [
-            CircleAvatar(
+            SafeAvatarWidget(
+              imageUrl: imageUrl,
               radius: 8.w,
               backgroundColor: theme.colorScheme.outline.withOpacity(0.3),
-              backgroundImage: imageUrl != null ? NetworkImage(imageUrl) : null,
-              child: imageUrl == null
-                  ? Icon(Icons.person, size: 8.w, color: Colors.grey)
-                  : null,
+              fallback: Icon(Icons.person, size: 8.w, color: Colors.grey),
             ),
             SizedBox(width: 4.w),
             Expanded(

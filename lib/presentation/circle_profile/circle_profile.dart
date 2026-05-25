@@ -169,7 +169,22 @@ class _CircleProfileState extends ConsumerState<CircleProfile>
                   fit: StackFit.expand,
                   children: [
                     if (_circle!.coverImageUrl != null)
-                      Image.network(_circle!.coverImageUrl!, fit: BoxFit.cover)
+                      Image.network(
+                        _circle!.coverImageUrl!,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) => Container(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: [
+                                AppTheme.lightTheme.colorScheme.primary,
+                                AppTheme.lightTheme.colorScheme.secondary,
+                              ],
+                            ),
+                          ),
+                        ),
+                      )
                     else
                       Container(
                         decoration: BoxDecoration(

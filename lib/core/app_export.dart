@@ -10,6 +10,7 @@ export 'package:intl/intl.dart';
 export '../routes/app_routes.dart';
 export '../widgets/custom_icon_widget.dart';
 export '../widgets/custom_image_widget.dart';
+export '../widgets/safe_avatar_widget.dart';
 export '../theme/app_theme.dart';
 
 // Models

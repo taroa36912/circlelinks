@@ -16,18 +16,22 @@ service cloud.firestore {
       return isSignedIn() && userRole(request.auth.uid) == 'student';
     }
 
-    function isAdmin(circleId) {
-      return isSignedIn() 
-        && circleId != null 
+    function isCircleMember(circleId) {
+      return isSignedIn()
+        && circleId != null
         && circleId is string
-        && exists(/databases/$(database)/documents/circles/$(circleId)/members/$(request.auth.uid))
+        && exists(/databases/$(database)/documents/circles/$(circleId)/members/$(request.auth.uid));
+    }
+
+    function isAdmin(circleId) {
+      return isCircleMember(circleId)
         && get(/databases/$(database)/documents/circles/$(circleId)/members/$(request.auth.uid)).data.role == 'admin';
     }
 
     function isConnectionChatParticipant(chatId) {
       return exists(/databases/$(database)/documents/connectionRequests/$(chatId)) && (
-        isAdmin(get(/databases/$(database)/documents/connectionRequests/$(chatId)).data.fromCircleId) ||
-        isAdmin(get(/databases/$(database)/documents/connectionRequests/$(chatId)).data.toCircleId)
+        isCircleMember(get(/databases/$(database)/documents/connectionRequests/$(chatId)).data.fromCircleId) ||
+        isCircleMember(get(/databases/$(database)/documents/connectionRequests/$(chatId)).data.toCircleId)
       );
     }
 
@@ -77,11 +81,11 @@ service cloud.firestore {
     match /dm_channels/{channelId} {
       allow read: if isSignedIn() && (
         request.auth.uid == resource.data.individualId || 
-        ('circleId' in resource.data && isAdmin(resource.data.circleId))
+        ('circleId' in resource.data && isCircleMember(resource.data.circleId))
       );
-      allow create: if isStudentUser() && (
+      allow create: if isSignedIn() && (
         request.auth.uid == request.resource.data.individualId || 
-        ('circleId' in request.resource.data && isAdmin(request.resource.data.circleId))
+        ('circleId' in request.resource.data && isCircleMember(request.resource.data.circleId))
       );
       allow update, delete: if isSignedIn() && (
         request.auth.uid == resource.data.individualId || 
@@ -91,11 +95,11 @@ service cloud.firestore {
       match /dm_messages/{msgId} {
         allow read: if isSignedIn() && (
           request.auth.uid == get(/databases/$(database)/documents/dm_channels/$(channelId)).data.individualId || 
-          ('circleId' in get(/databases/$(database)/documents/dm_channels/$(channelId)).data && isAdmin(get(/databases/$(database)/documents/dm_channels/$(channelId)).data.circleId))
+          ('circleId' in get(/databases/$(database)/documents/dm_channels/$(channelId)).data && isCircleMember(get(/databases/$(database)/documents/dm_channels/$(channelId)).data.circleId))
         );
-        allow create: if isStudentUser() && (
+        allow create: if isSignedIn() && (
           request.auth.uid == get(/databases/$(database)/documents/dm_channels/$(channelId)).data.individualId || 
-          ('circleId' in get(/databases/$(database)/documents/dm_channels/$(channelId)).data && isAdmin(get(/databases/$(database)/documents/dm_channels/$(channelId)).data.circleId))
+          ('circleId' in get(/databases/$(database)/documents/dm_channels/$(channelId)).data && isCircleMember(get(/databases/$(database)/documents/dm_channels/$(channelId)).data.circleId))
         );
         allow update, delete: if isSignedIn() && request.auth.uid == resource.data.senderId;
       }

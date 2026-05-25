@@ -386,26 +386,24 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
                       children: [
                         GestureDetector(
                           onTap: _pickImage,
-                          child: CircleAvatar(
-                            radius: 12.w,
-                            backgroundColor:
-                                theme.colorScheme.outline.withOpacity(0.3),
-                            backgroundImage: _imageBytes != null
-                                ? MemoryImage(_imageBytes!)
-                                : (_imageFile != null
-                                    ? FileImage(_imageFile!)
-                                    : (_userModel?.profileImageUrl != null
-                                        ? NetworkImage(
-                                                _userModel!.profileImageUrl!)
-                                            as ImageProvider
-                                        : null)),
-                            child: (_imageBytes == null &&
-                                    _imageFile == null &&
-                                    _userModel?.profileImageUrl == null)
-                                ? Icon(Icons.person,
-                                    size: 12.w, color: Colors.grey)
-                                : null,
-                          ),
+                          child: _imageBytes != null
+                              ? CircleAvatar(
+                                  radius: 12.w,
+                                  backgroundColor: theme.colorScheme.outline.withOpacity(0.3),
+                                  backgroundImage: MemoryImage(_imageBytes!),
+                                )
+                              : _imageFile != null
+                                  ? CircleAvatar(
+                                      radius: 12.w,
+                                      backgroundColor: theme.colorScheme.outline.withOpacity(0.3),
+                                      backgroundImage: FileImage(_imageFile!),
+                                    )
+                                  : SafeAvatarWidget(
+                                      imageUrl: _userModel?.profileImageUrl,
+                                      radius: 12.w,
+                                      backgroundColor: theme.colorScheme.outline.withOpacity(0.3),
+                                      fallback: Icon(Icons.person, size: 12.w, color: Colors.grey),
+                                    ),
                         ),
                         Positioned(
                           bottom: 0,

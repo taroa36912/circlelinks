@@ -95,13 +95,10 @@ class _MyCirclesListScreenState extends ConsumerState<MyCirclesListScreen> {
               elevation: 2,
               margin: EdgeInsets.only(bottom: 2.h),
               child: ListTile(
-                leading: CircleAvatar(
-                  backgroundImage: circle.profileImageUrl != null
-                      ? NetworkImage(circle.profileImageUrl!)
-                      : null,
-                  child: circle.profileImageUrl == null
-                      ? const Icon(Icons.group)
-                      : null,
+                leading: SafeAvatarWidget(
+                  imageUrl: circle.profileImageUrl,
+                  radius: 20,
+                  fallback: const Icon(Icons.group),
                 ),
                 title: Text(
                   circle.circleName,

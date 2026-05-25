@@ -110,20 +110,14 @@ class _ProjectCard extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  CircleAvatar(
+                  SafeAvatarWidget(
+                    imageUrl: project.creatorImageUrl,
                     radius: 22,
-                    backgroundImage: project.creatorImageUrl != null &&
-                            project.creatorImageUrl!.trim().isNotEmpty
-                        ? NetworkImage(project.creatorImageUrl!)
-                        : null,
-                    child: project.creatorImageUrl == null ||
-                            project.creatorImageUrl!.trim().isEmpty
-                        ? CustomIconWidget(
-                            iconName: 'person',
-                            color: colorScheme.onSurfaceVariant,
-                            size: 22,
-                          )
-                        : null,
+                    fallback: CustomIconWidget(
+                      iconName: 'person',
+                      color: colorScheme.onSurfaceVariant,
+                      size: 22,
+                    ),
                   ),
                   SizedBox(width: 3.w),
                   Expanded(

@@ -32,9 +32,7 @@ void main() async {
     });
 
     Stripe.publishableKey = 'pk_test_51TTIwnBleRjLMsIdW0gGeiVECiXZXTKmiNkXQNK73eR2WvSHwkJhQnB4wSAExZ5ohYdQ3Bt8H4OhDwnafX3SPMsZ00537Q9eK5';
-  await Stripe.instance.applySettings();
-
-  runApp(const ProviderScope(child: MyApp()));
+    await Stripe.instance.applySettings();
   }
 
   bool hasShownError = false;

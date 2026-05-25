@@ -7,9 +7,14 @@ class CustomImageWidget extends StatelessWidget {
   final double height;
   final BoxFit fit;
 
-  /// Optional widget to show when the image fails to load.
+  /// Optional widget to show when the image fails to load or URL is null/empty.
   /// If null, a default asset image is shown.
   final Widget? errorWidget;
+
+  /// Optional icon to show as a centered fallback. Used when [errorWidget] is
+  /// null and no asset fallback is desired. Takes precedence over the default
+  /// asset image only when explicitly provided.
+  final IconData? fallbackIcon;
 
   const CustomImageWidget({
     super.key,
@@ -18,27 +23,39 @@ class CustomImageWidget extends StatelessWidget {
     this.height = 60,
     this.fit = BoxFit.cover,
     this.errorWidget,
+    this.fallbackIcon,
   });
+
+  Widget _buildFallback() {
+    if (errorWidget != null) return errorWidget!;
+    if (fallbackIcon != null) {
+      return Icon(fallbackIcon, size: height * 0.5, color: Colors.grey);
+    }
+    return Image.asset(
+      "assets/images/no-image.jpg",
+      fit: fit,
+      width: width,
+      height: height,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
+    final url = imageUrl?.trim();
+    if (url == null || url.isEmpty) {
+      return SizedBox(
+        width: width,
+        height: height,
+        child: _buildFallback(),
+      );
+    }
+
     return CachedNetworkImage(
-      imageUrl: imageUrl ??
-          'https://images.unsplash.com/photo-1584824486509-112e4181ff6b?q=80&w=2940&auto=format&fit=crop',
+      imageUrl: url,
       width: width,
       height: height,
       fit: fit,
-
-      // Use caller-supplied widget if provided, else fallback asset.
-      errorWidget: (context, url, error) =>
-          errorWidget ??
-          Image.asset(
-            "assets/images/no-image.jpg",
-            fit: fit,
-            width: width,
-            height: height,
-          ),
-
+      errorWidget: (context, url, error) => _buildFallback(),
       placeholder: (context, url) => Container(
         width: width,
         height: height,

@@ -656,8 +656,8 @@ class FirestoreService {
         });
       });
     } catch (e) {
-      print("🔥 ERROR in sendDmMessage: $e");
-      throw Exception('メッセージの送信に失敗しました: $e');
+      print("🔥 ERROR in sendDmMessage: channelId=$channelId path=dm_channels/$channelId/dm_messages error=$e");
+      throw Exception('メッセージの送信に失敗しました。権限設定を確認してください。');
     }
   }
 

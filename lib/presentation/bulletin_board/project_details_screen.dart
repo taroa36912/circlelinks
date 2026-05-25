@@ -164,20 +164,14 @@ class _ProjectDetailsContent extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  CircleAvatar(
+                  SafeAvatarWidget(
+                    imageUrl: project.creatorImageUrl,
                     radius: 24,
-                    backgroundImage: project.creatorImageUrl != null &&
-                            project.creatorImageUrl!.trim().isNotEmpty
-                        ? NetworkImage(project.creatorImageUrl!)
-                        : null,
-                    child: project.creatorImageUrl == null ||
-                            project.creatorImageUrl!.trim().isEmpty
-                        ? CustomIconWidget(
-                            iconName: 'person',
-                            color: colorScheme.onSurfaceVariant,
-                            size: 24,
-                          )
-                        : null,
+                    fallback: CustomIconWidget(
+                      iconName: 'person',
+                      color: colorScheme.onSurfaceVariant,
+                      size: 24,
+                    ),
                   ),
                   SizedBox(width: 3.w),
                   Expanded(

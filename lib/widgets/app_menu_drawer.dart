@@ -249,18 +249,15 @@ class _AppMenuDrawerState extends ConsumerState<AppMenuDrawer> {
           color: theme.colorScheme.onPrimary.withValues(alpha: 0.8),
         ),
       ),
-      currentAccountPicture: CircleAvatar(
+      currentAccountPicture: SafeAvatarWidget(
+        imageUrl: profileImageUrl,
+        radius: 36,
         backgroundColor: theme.colorScheme.onPrimary,
-        backgroundImage:
-            (profileImageUrl != null) ? NetworkImage(profileImageUrl) : null,
-        child: (profileImageUrl == null)
-            ? Icon(
-                // サークル未作成の場合はアカウントアイコン、作成済みの場合はグループアイコン
-                hasCircle ? Icons.group_outlined : Icons.person_outline,
-                size: 40,
-                color: theme.colorScheme.primary,
-              )
-            : null,
+        fallback: Icon(
+          hasCircle ? Icons.group_outlined : Icons.person_outline,
+          size: 40,
+          color: theme.colorScheme.primary,
+        ),
       ),
       decoration: BoxDecoration(
         color: theme.colorScheme.primary,

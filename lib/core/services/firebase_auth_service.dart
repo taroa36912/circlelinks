@@ -1,7 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show kIsWeb, defaultTargetPlatform, TargetPlatform;
 import 'package:flutter_line_sdk/flutter_line_sdk.dart'; // LINE SDK
 import 'package:cloud_functions/cloud_functions.dart'; // 👈 Cloud Functions (修正済み)
 import 'package:flutter/services.dart'; // PlatformException
@@ -19,6 +19,14 @@ class FirebaseAuthService {
   GoogleSignIn get _googleSignIn {
     __googleSignIn ??= GoogleSignIn();
     return __googleSignIn!;
+  }
+
+  /// Whether the LINE SDK can run on the current platform.
+  /// LINE SDK only supports iOS and Android natively.
+  bool get isLinePlatformSupported {
+    if (kIsWeb) return false;
+    return defaultTargetPlatform == TargetPlatform.iOS ||
+        defaultTargetPlatform == TargetPlatform.android;
   }
 
   Stream<User?> get authStateChanges => _auth.authStateChanges();
@@ -93,8 +101,8 @@ class FirebaseAuthService {
 
   // --- signInWithLine メソッド ---
   Future<UserCredential?> signInWithLine() async {
-    if (kIsWeb) {
-      throw 'LINEログインは現在モバイルアプリのみサポートされています。';
+    if (!isLinePlatformSupported) {
+      throw 'LINEログインは現在iOS/Androidアプリのみ対応しています。';
     }
 
     try {
@@ -150,6 +158,8 @@ class FirebaseAuthService {
     try {
       if (!kIsWeb) {
         await _googleSignIn.signOut();
+      }
+      if (isLinePlatformSupported) {
         await LineSDK.instance.logout();
       }
     } catch (e) {

@@ -37,6 +37,7 @@ class _CircleDiscoveryState extends ConsumerState<CircleDiscovery>
   String _searchQuery = '';
   bool _isLoading = false;
   bool _isLoadingMore = false;
+  bool _circlesLoadError = false;
 
   Map<String, dynamic> _activeFilters = {
     'universities': <String>[],
@@ -86,12 +87,25 @@ class _CircleDiscoveryState extends ConsumerState<CircleDiscovery>
     _authSubscription = authService.authStateChanges.listen((user) {
       if (user != null) {
         _loadCircles();
+      } else {
+        _circlesSubscription?.cancel();
+        _circlesSubscription = null;
+        if (mounted) {
+          setState(() {
+            _allCircles = [];
+            _filteredCircles = [];
+            _circlesLoadError = false;
+          });
+        }
       }
     });
   }
 
   void _loadCircles() {
     _circlesSubscription?.cancel();
+
+    final authService = ref.read(firebaseAuthServiceProvider);
+    if (authService.currentUser == null) return;
 
     final firestoreService = ref.read(firestoreServiceProvider);
     _circlesSubscription = firestoreService.getCirclesStream().listen(
@@ -100,12 +114,18 @@ class _CircleDiscoveryState extends ConsumerState<CircleDiscovery>
           setState(() {
             _allCircles = circles;
             _filteredCircles = List.from(_allCircles);
+            _circlesLoadError = false;
             _applyFiltersAndSearch();
           });
         }
       },
       onError: (error) {
         print("CircleDiscovery Error: $error");
+        if (mounted) {
+          setState(() {
+            _circlesLoadError = true;
+          });
+        }
       },
     );
   }
@@ -397,7 +417,33 @@ class _CircleDiscoveryState extends ConsumerState<CircleDiscovery>
             ),
           ];
         },
-        body: NotificationListener<ScrollNotification>(
+        body: _circlesLoadError
+            ? Center(
+                child: Padding(
+                  padding: EdgeInsets.all(8.w),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.error_outline,
+                          size: 64, color: Colors.grey),
+                      SizedBox(height: 2.h),
+                      Text(
+                        'サークル一覧を読み込めませんでした。\nログイン状態または権限設定を確認してください。',
+                        textAlign: TextAlign.center,
+                        style: theme.textTheme.bodyLarge
+                            ?.copyWith(color: Colors.grey),
+                      ),
+                      SizedBox(height: 3.h),
+                      ElevatedButton.icon(
+                        onPressed: _loadCircles,
+                        icon: const Icon(Icons.refresh),
+                        label: const Text('再試行'),
+                      ),
+                    ],
+                  ),
+                ),
+              )
+            : NotificationListener<ScrollNotification>(
           onNotification: (notification) {
             _onScroll(notification);
             return false;

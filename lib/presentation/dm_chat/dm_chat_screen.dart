@@ -25,6 +25,7 @@ class _DmChatScreenState extends ConsumerState<DmChatScreen> {
   final ScrollController _scrollController = ScrollController();
   String? _currentUserId;
   String _currentUserName = '...'; // 送信者名
+  bool _isSendingMessage = false;
 
   @override
   void initState() {
@@ -300,7 +301,9 @@ class _DmChatScreenState extends ConsumerState<DmChatScreen> {
   Future<void> _sendMessage() async {
     final messageText = _messageController.text.trim();
     if (messageText.isEmpty || _currentUserId == null) return;
+    if (_isSendingMessage) return;
 
+    _isSendingMessage = true;
     final firestoreService = ref.read(firestoreServiceProvider);
 
     final message = DmMessageModel(
@@ -333,6 +336,8 @@ class _DmChatScreenState extends ConsumerState<DmChatScreen> {
           ),
         );
       }
+    } finally {
+      _isSendingMessage = false;
     }
   }
 }

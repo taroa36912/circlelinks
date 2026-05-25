@@ -23,6 +23,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   String? _otherUniversityName;
   String? _currentUserId;
   bool _isLoading = true;
+  bool _isSendingMessage = false;
   
   // ⬇️ 修正: 初期化フラグを追加 ⬇️
   bool _didInit = false;
@@ -369,7 +370,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   Future<void> _sendMessage() async {
     final messageText = _messageController.text.trim();
     if (messageText.isEmpty || _currentUserId == null) return;
+    if (_isSendingMessage) return;
 
+    _isSendingMessage = true;
     try {
       final firestoreService = ref.read(firestoreServiceProvider);
 
@@ -405,6 +408,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           backgroundColor: Colors.red,
         ),
       );
+    } finally {
+      _isSendingMessage = false;
     }
   }
 

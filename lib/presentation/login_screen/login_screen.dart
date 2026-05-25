@@ -418,6 +418,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                               child: SocialLoginWidget(
                                 onGoogleLogin: _handleGoogleLogin,
                                 onLineLogin: _handleLineLogin,
+                                showLineLogin: ref.read(firebaseAuthServiceProvider).isLinePlatformSupported,
                               ),
                             ),
                           );

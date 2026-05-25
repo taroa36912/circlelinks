@@ -8,11 +8,14 @@ class SocialLoginWidget extends StatelessWidget {
   final Future<void> Function() onGoogleLogin;
   // 1. LINEログイン用のコールバック関数を追加
   final Future<void> Function() onLineLogin;
+  /// Whether to show the LINE login button. Defaults to true.
+  final bool showLineLogin;
 
   const SocialLoginWidget({
     super.key,
     required this.onGoogleLogin,
     required this.onLineLogin, // 2. コンストラクタで必須にする
+    this.showLineLogin = true,
   });
 
   @override
@@ -89,36 +92,37 @@ class SocialLoginWidget extends StatelessWidget {
 
         SizedBox(height: 2.h),
 
-        // LINE Login Button
-        SizedBox(
-          width: double.infinity,
-          height: 6.h,
-          child: OutlinedButton.icon(
-            // 3. onPressed を親から渡された onLineLogin に変更
-            onPressed: onLineLogin,
-            icon: Image.asset(
-              'assets/images/l-logo.png',
-              width: 20,
-              height: 20,
-            ),
-            label: Text(
-              'LINEでログイン',
-              style: AppTheme.lightTheme.textTheme.titleMedium?.copyWith(
-                color: AppTheme.lightTheme.colorScheme.onSurface,
-                fontWeight: FontWeight.w500,
+        // LINE Login Button (hidden on unsupported platforms)        
+        if (showLineLogin)
+          SizedBox(
+            width: double.infinity,
+            height: 6.h,
+            child: OutlinedButton.icon(
+              // 3. onPressed を親から渡された onLineLogin に変更
+              onPressed: onLineLogin,
+              icon: Image.asset(
+                'assets/images/l-logo.png',
+                width: 20,
+                height: 20,
               ),
-            ),
-            style: OutlinedButton.styleFrom(
-              side: BorderSide(
-                color: AppTheme.lightTheme.colorScheme.outline,
-                width: 1,
+              label: Text(
+                'LINEでログイン',
+                style: AppTheme.lightTheme.textTheme.titleMedium?.copyWith(
+                  color: AppTheme.lightTheme.colorScheme.onSurface,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
+              style: OutlinedButton.styleFrom(
+                side: BorderSide(
+                  color: AppTheme.lightTheme.colorScheme.outline,
+                  width: 1,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
             ),
           ),
-        ),
       ],
     );
   }

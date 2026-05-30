@@ -18,9 +18,12 @@ class LoginFormWidget extends ConsumerStatefulWidget {
 }
 
 class _LoginFormWidgetState extends ConsumerState<LoginFormWidget> {
+  static const double _loginButtonHeight = 52;
+
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+
   bool _isPasswordVisible = false;
   bool _isFormValid = false;
 
@@ -73,6 +76,68 @@ class _LoginFormWidgetState extends ConsumerState<LoginFormWidget> {
       return 'パスワードは6文字以上で入力してください';
     }
     return null;
+  }
+
+  void _submitLogin() {
+    if (_isFormValid && !widget.isLoading) {
+      widget.onLogin(
+        _emailController.text,
+        _passwordController.text,
+      );
+    }
+  }
+
+  TextStyle? _loginButtonTextStyle() {
+    return AppTheme.lightTheme.textTheme.titleMedium?.copyWith(
+      color: Colors.white,
+      fontWeight: FontWeight.w600,
+      height: 1.2,
+    );
+  }
+
+  ButtonStyle _loginButtonStyle() {
+    return ElevatedButton.styleFrom(
+      minimumSize: const Size.fromHeight(_loginButtonHeight),
+      fixedSize: const Size.fromHeight(_loginButtonHeight),
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      backgroundColor: _isFormValid
+          ? AppTheme.lightTheme.colorScheme.primary
+          : AppTheme.lightTheme.colorScheme.outline,
+      foregroundColor: Colors.white,
+      elevation: _isFormValid ? 2 : 0,
+      shadowColor: AppTheme.lightTheme.colorScheme.shadow,
+      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      alignment: Alignment.center,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+    );
+  }
+
+  Widget _loginButtonChild() {
+    if (widget.isLoading) {
+      return const SizedBox(
+        width: 20,
+        height: 20,
+        child: CircularProgressIndicator(
+          strokeWidth: 2,
+          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+        ),
+      );
+    }
+
+    return Text(
+      'ログイン',
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      textAlign: TextAlign.center,
+      strutStyle: const StrutStyle(
+        fontSize: 16,
+        height: 1.2,
+        forceStrutHeight: true,
+      ),
+      style: _loginButtonTextStyle(),
+    );
   }
 
   @override
@@ -207,11 +272,7 @@ class _LoginFormWidgetState extends ConsumerState<LoginFormWidget> {
             ),
             validator: _validatePassword,
             style: AppTheme.lightTheme.textTheme.bodyLarge,
-            onFieldSubmitted: (_) {
-              if (_isFormValid && !widget.isLoading) {
-                widget.onLogin(_emailController.text, _passwordController.text);
-              }
-            },
+            onFieldSubmitted: (_) => _submitLogin(),
           ),
           SizedBox(height: 1.h),
           Align(
@@ -236,40 +297,12 @@ class _LoginFormWidgetState extends ConsumerState<LoginFormWidget> {
           SizedBox(height: 3.h),
           SizedBox(
             width: double.infinity,
-            height: 6.h,
+            height: _loginButtonHeight,
             child: ElevatedButton(
-              onPressed: _isFormValid && !widget.isLoading
-                  ? () => widget.onLogin(
-                      _emailController.text, _passwordController.text)
-                  : null,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: _isFormValid
-                    ? AppTheme.lightTheme.colorScheme.primary
-                    : AppTheme.lightTheme.colorScheme.outline,
-                foregroundColor: Colors.white,
-                elevation: _isFormValid ? 2 : 0,
-                shadowColor: AppTheme.lightTheme.colorScheme.shadow,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              child: widget.isLoading
-                  ? const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                      ),
-                    )
-                  : Text(
-                      'ログイン',
-                      style:
-                          AppTheme.lightTheme.textTheme.titleMedium?.copyWith(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
+              onPressed:
+                  _isFormValid && !widget.isLoading ? _submitLogin : null,
+              style: _loginButtonStyle(),
+              child: _loginButtonChild(),
             ),
           ),
         ],

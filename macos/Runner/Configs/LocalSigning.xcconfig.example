@@ -1,0 +1,21 @@
+// LocalSigning.xcconfig — developer-specific signing overrides.
+//
+// This file is NOT committed to Git.
+// Each developer must copy this example and fill in their own values:
+//
+//   cp macos/Runner/Configs/LocalSigning.xcconfig.example \
+//      macos/Runner/Configs/LocalSigning.xcconfig
+//
+// Then edit LocalSigning.xcconfig with your own Team ID and Bundle Identifier.
+
+// Your Apple Development Team ID.
+// Find it at https://developer.apple.com/account → Membership.
+// Alternatively, in Xcode: Runner target → Signing & Capabilities → Team.
+DEVELOPMENT_TEAM = YOUR_TEAM_ID
+
+// Your personal Bundle Identifier.
+// This must be unique across all macOS apps installed on your machine.
+// Use the pattern:
+//   com.circlelink.circlelink.<yourname>
+// or use your own reverse-domain identifier.
+PRODUCT_BUNDLE_IDENTIFIER = com.circlelink.circlelink.yourname

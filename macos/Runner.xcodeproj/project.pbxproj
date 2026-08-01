@@ -581,6 +581,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 11.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.circlelink.circlelink.kensh;
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				RUNTIME_EXCEPTION_ALLOW_JIT = YES;
 				SWIFT_VERSION = 5.0;
@@ -723,6 +724,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 11.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.circlelink.circlelink.kensh;
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				RUNTIME_EXCEPTION_ALLOW_JIT = YES;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
@@ -750,6 +752,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 11.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.circlelink.circlelink.kensh;
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				RUNTIME_EXCEPTION_ALLOW_JIT = YES;
 				SWIFT_VERSION = 5.0;
